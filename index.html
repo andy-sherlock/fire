@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>FIRE退休模拟器</title>
+<style>
+
+body{
+font-family:Arial;
+background:#f5f5f5;
+padding:20px;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:10px;
+margin-bottom:20px;
+box-shadow:0 2px 5px rgba(0,0,0,0.1);
+}
+
+h2{
+margin-top:0;
+}
+
+.row{
+display:flex;
+justify-content:space-between;
+margin:8px 0;
+}
+
+input{
+width:100px;
+}
+
+.result{
+font-weight:bold;
+color:#e91e63;
+}
+
+</style>
+</head>
+<body>
+
+<h1>FIRE退休模拟器</h1>
+
+<div class="card">
+
+<h2>月度消费</h2>
+
+<div class="row">住房固定 <input id="house" type="number" value="0"></div>
+<div class="row">餐饮生鲜 <input id="food" type="number" value="0"></div>
+<div class="row">日常消耗 <input id="life" type="number" value="0"></div>
+<div class="row">医保看病 <input id="medical" type="number" value="0"></div>
+<div class="row">交通快递 <input id="transport" type="number" value="0"></div>
+<div class="row">数码娱乐 <input id="digital" type="number" value="0"></div>
+<div class="row">社交娱乐 <input id="social" type="number" value="0"></div>
+<div class="row">电子女友 <input id="waifu" type="number" value="0"></div>
+<div class="row">其他杂费 <input id="other" type="number" value="0"></div>
+
+<h3>年度消费</h3>
+
+<div class="row">旅游支出（年） <input id="travel" type="number" value="0"></div>
+
+</div>
+
+<div class="card">
+
+<h2>支出统计</h2>
+
+<div class="row">月总支出 <span class="result" id="monthCost">0</span></div>
+<div class="row">年总支出 <span class="result" id="yearCost">0</span></div>
+
+</div>
+
+<div class="card">
+
+<h2>通胀设置</h2>
+
+<div class="row">年通胀率 <input id="inflation" type="number" value="2.5"> %</div>
+
+</div>
+
+<div class="card">
+
+<h2>FIRE计算</h2>
+
+<div class="row">FIRE所需资金（25倍） <span class="result" id="fireNumber">0</span></div>
+
+</div>
+
+<div class="card">
+
+<h2>资产模拟</h2>
+
+<div class="row">当前资产 <input id="asset" type="number" value="500000"></div>
+
+<div class="row">投资年回报率 <input id="returnRate" type="number" value="5"> %</div>
+
+<div class="row">提取率 <input id="withdrawRate" type="number" value="4"> %</div>
+
+</div>
+
+<div class="card">
+
+<h2>模拟结果</h2>
+
+<div class="row">资产可维持年数 <span class="result" id="years">0</span></div>
+
+</div>
+
+<script>
+
+function calc(){
+
+let house=Number(houseInput.value)
+let food=Number(foodInput.value)
+let life=Number(lifeInput.value)
+let medical=Number(medicalInput.value)
+let transport=Number(transportInput.value)
+let digital=Number(digitalInput.value)
+let social=Number(socialInput.value)
+let waifu=Number(waifuInput.value)
+let other=Number(otherInput.value)
+let travel=Number(travelInput.value)
+
+let monthCost = house+food+life+medical+transport+digital+social+waifu+other
+let yearCost = monthCost*12 + travel
+
+monthCostLabel.innerText=monthCost.toFixed(0)
+yearCostLabel.innerText=yearCost.toFixed(0)
+
+let fire = yearCost*25
+
+fireNumber.innerText=fire.toFixed(0)
+
+let asset = Number(assetInput.value)
+let returnRate = Number(returnRateInput.value)/100
+let withdrawRate = Number(withdrawRateInput.value)/100
+let inflation = Number(inflationInput.value)/100
+
+let years=0
+let money=asset
+let cost=yearCost
+
+while(money>0 && years<100){
+
+let withdraw = cost
+money = money*(1+returnRate) - withdraw
+cost = cost*(1+inflation)
+
+years++
+}
+
+yearsLabel.innerText=years
+
+}
+
+let houseInput=document.getElementById("house")
+let foodInput=document.getElementById("food")
+let lifeInput=document.getElementById("life")
+let medicalInput=document.getElementById("medical")
+let transportInput=document.getElementById("transport")
+let digitalInput=document.getElementById("digital")
+let socialInput=document.getElementById("social")
+let waifuInput=document.getElementById("waifu")
+let otherInput=document.getElementById("other")
+let travelInput=document.getElementById("travel")
+
+let inflationInput=document.getElementById("inflation")
+let assetInput=document.getElementById("asset")
+let returnRateInput=document.getElementById("returnRate")
+let withdrawRateInput=document.getElementById("withdrawRate")
+
+let monthCostLabel=document.getElementById("monthCost")
+let yearCostLabel=document.getElementById("yearCost")
+let fireNumber=document.getElementById("fireNumber")
+let yearsLabel=document.getElementById("years")
+
+document.querySelectorAll("input").forEach(i=>{
+i.addEventListener("input",calc)
+})
+
+calc()
+
+</script>
+
+</body>
+</html>
