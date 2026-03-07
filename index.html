@@ -3,18 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FIRE 退休与资产计算器 v4</title>
+    <title>FIRE 退休与资产计算器 v6 (精准数据版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
         input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        input[type="number"] {
-            -moz-appearance: textfield;
-        }
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
+        /* 自定义滑块颜色 */
+        input[type=range] { accent-color: #3b82f6; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
@@ -56,18 +53,26 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-400 text-center flex flex-col justify-center">
-            <h2 class="text-xl font-bold mb-2">🎯 FIRE 退休所需总资金</h2>
-            <p class="text-sm text-gray-500 mb-4">公式：年平均支出 × 25</p>
-            <div class="text-4xl font-extrabold text-blue-600">¥ {{ fireTarget.toLocaleString() }}</div>
+        <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-400 flex flex-col justify-center">
+            <h2 class="text-xl font-bold mb-4">🎯 FIRE 退休所需总资金</h2>
+            <div class="text-4xl font-extrabold text-blue-600 text-center py-4">¥ {{ fireTarget.toLocaleString() }}</div>
+            <div class="mt-2 text-xs text-slate-500 bg-slate-50 p-3 rounded-lg leading-relaxed border border-slate-100">
+                <span class="font-bold text-slate-600 mb-1 block">规则：FIRE 常用法则（25倍年支出）</span>
+                以当前物价计算，你需要攒下大约年支出 25 倍的本金。只要将这笔资金投入到能够产生被动收益的资产组合中，即可实现财务自由。
+            </div>
         </div>
         <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-yellow-400">
-            <h2 class="text-xl font-bold mb-4">🌍 宏观经济环境</h2>
+            <h2 class="text-xl font-bold mb-4">🌍 宏观经济假设 (中国环境)</h2>
             <div class="mb-4">
-                <label class="block font-semibold mb-1">预计年通货膨胀率 (%)</label>
-                <input type="number" v-model.number="inflation" step="0.1" class="w-full border rounded px-3 py-2 bg-gray-50">
+                <label class="block font-semibold mb-2">预期年通胀率 (%)</label>
+                <input type="number" v-model.number="inflation" step="0.1" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50 text-lg font-bold">
             </div>
-            <p class="text-sm text-gray-500">通胀会抵消投资收益，所有所需时间及消耗计算均已扣除 {{ inflation }}% 的通胀损耗。</p>
+            <div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg leading-relaxed border border-slate-100">
+                这里的通胀率会：<br>
+                ① 从你退休后的投资回报里扣除，用来估算资金「按当前购买力」能撑多久；<br>
+                ② 从你定投储蓄阶段的收益里扣除，计算资产的真实增长速度。<br>
+                <span class="text-gray-400">（这只是用于压力测试的简化模型，并非严谨的宏观经济预测）</span>
+            </div>
         </div>
     </div>
 
@@ -91,22 +96,21 @@
 
                 <div class="flex justify-between items-end mb-3 pb-2 border-b border-green-200">
                     <p class="text-xs text-gray-500 font-bold">自建定投组合池：</p>
-                    <p class="text-xs font-bold" :class="totalEtfWeight === 100 ? 'text-green-600' : 'text-orange-500'">
+                    <p class="text-xs font-bold" :class="totalEtfAmount === stockMonthly ? 'text-green-600' : 'text-orange-500'">
                         分配进度: {{ totalEtfWeight.toFixed(1) }}% / ¥{{ totalEtfAmount }}
                     </p>
                 </div>
                 
                 <div class="space-y-3 flex-1 mb-4">
                     <div v-for="(etf, index) in etfPortfolio" :key="index" class="flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm bg-white p-3 rounded shadow-sm border border-gray-200 gap-3 relative group">
-                        
                         <div class="flex flex-col w-full sm:w-1/3 gap-1">
                             <select v-model="etf.name" @change="onEtfChange(index)" class="border border-gray-300 rounded px-1 py-1 text-sm bg-gray-50 focus:ring-green-500 focus:border-green-500 w-full outline-none truncate">
                                 <option v-for="opt in availableETFs" :key="opt.name" :value="opt.name">{{ opt.name }}</option>
                                 <option value="自定义...">自定义...</option>
                             </select>
-                            <div class="flex items-center text-xs">
-                                <span class="text-gray-500 mr-1 whitespace-nowrap">预期年化:</span>
-                                <input type="number" step="0.1" v-model.number="etf.rate" class="w-14 border rounded px-1 text-center py-0.5 outline-none">
+                            <div class="flex items-center text-xs mt-1">
+                                <span class="text-gray-500 mr-1 whitespace-nowrap">名义年化:</span>
+                                <input type="number" step="0.1" v-model.number="etf.rate" class="w-14 border rounded px-1 text-center py-0.5 outline-none font-bold text-gray-700">
                                 <span class="text-gray-500 ml-1">%</span>
                             </div>
                         </div>
@@ -114,18 +118,15 @@
                         <div class="flex items-center w-full sm:w-auto flex-1 space-x-2">
                             <div class="flex items-center border rounded px-1 bg-gray-50 flex-1 sm:flex-none">
                                 <span class="text-gray-400 px-1">¥</span>
-                                <input type="number" v-model.number="etf.amount" @input="updateEtfWeight(index)" class="w-full sm:w-16 outline-none bg-transparent text-center py-1">
+                                <input type="number" v-model.number="etf.amount" @input="updateEtfWeight(index)" class="w-full sm:w-16 outline-none bg-transparent text-center py-1 font-bold">
                             </div>
-                            
-                            <input type="range" min="0" max="100" step="0.5" v-model.number="etf.weight" @input="updateEtfAmount(index)" class="flex-1 accent-green-500 mx-1 hidden sm:block">
-                            
+                            <input type="range" min="0" max="100" step="0.5" v-model.number="etf.weight" @input="updateEtfAmount(index)" class="flex-1 mx-1 hidden sm:block" style="accent-color: #22c55e;">
                             <div class="flex items-center border rounded px-1 bg-gray-50 w-20 sm:w-auto justify-center">
-                                <input type="number" v-model.number="etf.weight" @input="updateEtfAmount(index)" class="w-12 outline-none bg-transparent text-center py-1">
+                                <input type="number" v-model.number="etf.weight" @input="updateEtfAmount(index)" class="w-12 outline-none bg-transparent text-center py-1 text-gray-600">
                                 <span class="text-gray-400 px-1">%</span>
                             </div>
                         </div>
-
-                        <button @click="removeEtf(index)" class="absolute -right-2 -top-2 bg-red-100 text-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100 sm:opacity-100">×</button>
+                        <button @click="removeEtf(index)" class="absolute -right-2 -top-2 bg-red-100 text-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-red-500 hover:text-white transition-colors sm:opacity-100 opacity-100">×</button>
                     </div>
                 </div>
 
@@ -141,19 +142,23 @@
                 <div class="mt-4 bg-white p-4 rounded-lg border border-green-200 text-center">
                     <h4 class="font-bold text-gray-700 mb-2">🎯 距离实现 FIRE 还需要存多久？</h4>
                     <div v-if="stockMonthly <= 0" class="text-red-500 text-sm">请设置定投金额以积累财富</div>
-                    <div v-else-if="totalEtfWeight !== 100" class="text-orange-500 text-sm font-bold">请确保仓位分配总计正好为 100%</div>
-                    <div v-else-if="yearsToFire > 90" class="text-red-500 text-sm">遥遥无期，建议增加收入或降低消费期望</div>
+                    <div v-else-if="totalEtfAmount !== stockMonthly" class="text-orange-500 text-sm font-bold">
+                        分配总金额与月投入差 ¥{{ Math.abs(stockMonthly - totalEtfAmount) }}，请调整。
+                    </div>
                     <div v-else class="text-3xl font-extrabold text-green-600">{{ yearsToFire }} 年</div>
                 </div>
             </div>
 
-            <div class="border p-5 rounded-xl border-purple-200 bg-purple-50/30 flex flex-col">
-                <h3 class="font-bold text-purple-700 mb-4 text-lg">💼 香港保险板块 (按数据表测算)</h3>
+            <div class="border p-5 rounded-xl border-purple-200 bg-purple-50/30 flex flex-col relative">
+                <h3 class="font-bold text-purple-700 mb-4 text-lg flex items-center">
+                    💼 香港分红险 (精准测算)
+                    <span class="ml-2 bg-purple-600 text-white text-[10px] px-2 py-0.5 rounded-full font-normal">内置底表</span>
+                </h3>
                 <div class="mb-4">
                     <label class="block text-sm font-semibold mb-1 text-gray-700">已投入/拟投入总本金 (¥)</label>
                     <input type="number" v-model.number="hkInsurance.principal" class="w-full border border-purple-300 rounded px-3 py-2 font-bold text-purple-700">
                 </div>
-                <div class="mb-6 bg-white p-4 rounded shadow-sm border border-purple-100 flex-1">
+                <div class="mb-4 bg-white p-4 rounded shadow-sm border border-purple-100 flex-1">
                     <label class="block text-sm font-semibold mb-2 text-gray-700">提领方案制定</label>
                     <div class="flex flex-wrap items-center space-x-2 mb-4">
                         <span class="text-sm mt-2">第</span>
@@ -161,50 +166,66 @@
                         <span class="text-sm mt-2">年开始，固定提本金的</span>
                         <span class="font-bold text-purple-600 text-lg mt-2">{{ hkInsurance.startYear }}%</span>
                     </div>
-                    <input type="range" min="6" max="30" v-model.number="hkInsurance.startYear" class="w-full accent-purple-500">
-                    <p class="text-xs text-gray-400 mt-2">注：依据保单特性，建议第6年回本以后再考虑提现以防亏损。</p>
+                    <input type="range" min="6" max="30" v-model.number="hkInsurance.startYear" class="w-full" style="accent-color: #a855f7;">
                 </div>
+                
                 <div class="mt-auto bg-purple-100/50 p-4 rounded-lg border border-purple-200">
                     <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm font-semibold text-gray-700">每年可领现金流：</span>
+                        <span class="text-sm font-semibold text-gray-700">每年固定领取金额：</span>
                         <span class="text-xl font-bold text-purple-700">¥ {{ hkPayoutAmount.toLocaleString() }}</span>
                     </div>
                     <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm font-semibold text-gray-700">提现计划可维持：</span>
-                        <span v-if="hkSimResults.isInfinite" class="text-lg font-bold text-green-600">终身永续 (复利大于消耗)</span>
+                        <span class="text-sm font-semibold text-gray-700">提现计划维持年限：</span>
+                        <span v-if="hkSimResults.isInfinite" class="text-lg font-bold text-green-600">终身永续 (源源不断)</span>
                         <span v-else class="text-lg font-bold text-red-500">{{ hkSimResults.yearsToZero }} 年后枯竭</span>
                     </div>
-                    <div class="pt-2 mt-2 border-t border-purple-200">
-                        <span class="text-xs text-gray-500">模拟第80年时保单剩余现金价值：</span>
-                        <span class="text-sm font-bold text-gray-700">¥ {{ Math.round(hkSimResults.cvAtYear80).toLocaleString() }}</span>
+                    <div class="pt-2 mt-2 border-t border-purple-200 flex justify-between items-center">
+                        <span class="text-xs text-gray-500">保单第80年剩余现金价值：</span>
+                        <span class="text-sm font-bold text-gray-700">¥ {{ Math.round(hkSimResults.cvAt80).toLocaleString() }}</span>
                     </div>
+                </div>
+
+                <div class="mt-4 text-xs text-slate-500 bg-white p-3 rounded-lg leading-relaxed border border-slate-200">
+                    <span class="font-bold text-purple-600 mb-1 block">📌 底层数据说明：</span>
+                    当前计算引擎已完全加载并适配<b>【国S海W-傲瑞盛世】</b>真实利益演示表数据。模拟逻辑严格遵循保单前 100 年真实的非线性增长率（预期第6年回本，后期 IRR 逼近 6.50%）。取款会等比例消耗真实账户现金价值。
                 </div>
             </div>
         </div>
     </div>
 
     <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-indigo-500">
-        <h2 class="text-xl font-bold mb-4">🏖️ 退休后财务消耗模拟 (大盘资金池)</h2>
+        <h2 class="text-xl font-bold mb-4">🏖️ 退休后资金能花多少年 (按购买力)</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div class="bg-gray-50 p-4 rounded border border-gray-100">
-                <label class="block font-semibold mb-2">大盘年平均回报率 (%)</label>
-                <div class="flex items-center space-x-3">
-                    <input type="range" min="0" max="20" step="0.5" v-model.number="postRetire.returnRate" class="flex-1 accent-indigo-500">
+                <label class="block font-semibold mb-2 text-gray-700">1) 大盘年平均回报率 (名义)</label>
+                <div class="flex items-center space-x-3 mb-3">
+                    <input type="range" min="0" max="20" step="0.5" v-model.number="postRetire.returnRate" class="flex-1" style="accent-color: #6366f1;">
                     <input type="number" v-model.number="postRetire.returnRate" step="0.5" class="w-20 border rounded px-2 py-1 text-center font-bold text-indigo-600">
+                    <span class="text-gray-500">%</span>
                 </div>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    这是投资账户的「名义年化收益率」，没扣通胀之前。由于退休后需要求稳，建议此处设定略低于定投期的激进回报率。
+                </p>
             </div>
+            
             <div class="bg-gray-50 p-4 rounded border border-gray-100">
-                <label class="block font-semibold mb-2">年平均提取率 (%)</label>
-                <div class="flex items-center space-x-3">
-                    <input type="range" min="0" max="20" step="0.5" v-model.number="postRetire.withdrawalRate" class="flex-1 accent-pink-500">
+                <label class="block font-semibold mb-2 text-gray-700">2) 年平均提取率</label>
+                <div class="flex items-center space-x-3 mb-3">
+                    <input type="range" min="0" max="20" step="0.5" v-model.number="postRetire.withdrawalRate" class="flex-1" style="accent-color: #ec4899;">
                     <input type="number" v-model.number="postRetire.withdrawalRate" step="0.5" class="w-20 border rounded px-2 py-1 text-center font-bold text-pink-600">
+                    <span class="text-gray-500">%</span>
                 </div>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    你每年愿意从退休资金里花出去的比例（名义值）。经典的 FIRE 理论推荐 4% 的安全提取率。
+                </p>
             </div>
         </div>
+        
         <div class="bg-indigo-50 p-6 rounded-lg text-center border border-indigo-100">
-            <h3 class="font-bold text-indigo-800 mb-3">📉 这笔 FIRE 资金能供你花多少年？</h3>
+            <h3 class="font-bold text-indigo-800 mb-3 text-lg">3) 在这个「回报率减去通胀」和提取率下，资金按购买力能撑多久？</h3>
             <div v-if="yearsToDeplete === '永不枯竭'" class="text-3xl font-extrabold text-indigo-600">永不枯竭 🌟</div>
             <div v-else class="text-3xl font-extrabold text-pink-600">可支撑 {{ yearsToDeplete }} 年</div>
+            <p class="text-sm text-indigo-400 mt-2">计算已将保险每年派发的现金流纳入对冲补充</p>
         </div>
     </div>
     
@@ -223,14 +244,11 @@
                     daily: { name: '🛒 日常消耗', monthly: 500, annual: 6000 },
                     medical: { name: '💊 医保看病', monthly: 166, annual: 2000 },
                     transport: { name: '🚌 交通快递', monthly: 250, annual: 3000 },
-                    girlfriend: { name: '🎮 电子女友', monthly: 416, annual: 5000 },
+                    girlfriend: { name: '🎮 娱乐交际', monthly: 416, annual: 5000 },
                 },
-                inflation: 2.5,
-                
-                stockMonthly: 10000,
-                stockAnnual: 120000,
-                
-                // 预设的主流 ETF 数据库
+                inflation: 3.0,
+                stockMonthly: 5400,
+                stockAnnual: 64800,
                 availableETFs: [
                     { name: '沪深300 (A股大盘)', rate: 8.0 },
                     { name: '中证500 (A股中小盘)', rate: 9.0 },
@@ -241,18 +259,17 @@
                     { name: '日经225 (日本大盘)', rate: 7.0 },
                     { name: '黄金ETF (避险抗通胀)', rate: 5.0 },
                     { name: '纯债基金 (稳健打底)', rate: 4.0 },
-                    { name: '货币基金 (灵活现金)', rate: 2.0 }
+                    { name: '货币基金 (灵活现金)', rate: 2.0 },
+                    { name: '比特币 (BTC 高风险)', rate: 25.0 },
+                    { name: '以太坊 (ETH 高风险)', rate: 30.0 }
                 ],
-
-                // 用户的当前组合
                 etfPortfolio: [
-                    { name: '标普500 (美股大盘)', rate: 10.0, weight: 40, amount: 4000 },
-                    { name: '纳指100 (美股科技)', rate: 15.0, weight: 30, amount: 3000 },
-                    { name: '沪深300 (A股大盘)', rate: 8.0, weight: 30, amount: 3000 }
+                    { name: '标普500 (美股大盘)', rate: 10.0, weight: 18.5, amount: 1000 },
+                    { name: '纳指100 (美股科技)', rate: 15.0, weight: 37, amount: 2000 },
+                    { name: '纯债基金 (稳健打底)', rate: 4.0, weight: 44.5, amount: 2400 }
                 ],
-
                 hkInsurance: { principal: 500000, startYear: 10 },
-                postRetire: { returnRate: 6.0, withdrawalRate: 4.0 }
+                postRetire: { returnRate: 4.0, withdrawalRate: 4.0 }
             }
         },
         computed: {
@@ -262,13 +279,13 @@
             totalEtfWeight() { return Number(this.etfPortfolio.reduce((sum, etf) => sum + (Number(etf.weight) || 0), 0).toFixed(1)); },
             totalEtfAmount() { return this.etfPortfolio.reduce((sum, etf) => sum + (Number(etf.amount) || 0), 0); },
             combinedEtfRate() {
-                const totalWeight = this.totalEtfWeight;
-                if (totalWeight === 0) return 0;
-                return this.etfPortfolio.reduce((sum, etf) => sum + (etf.rate * (etf.weight / totalWeight)), 0);
+                const totalAmount = this.totalEtfAmount;
+                if (totalAmount === 0) return 0;
+                return this.etfPortfolio.reduce((sum, etf) => sum + (etf.rate * (etf.amount / totalAmount)), 0);
             },
             hkPayoutAmount() { return this.hkInsurance.principal * (this.hkInsurance.startYear / 100); },
             yearsToFire() {
-                if (this.stockMonthly <= 0 || this.totalEtfWeight !== 100) return 0;
+                if (this.stockMonthly <= 0 || this.totalEtfAmount !== this.stockMonthly) return 0;
                 let balance = 0, months = 0;
                 let realAnnualRate = (this.combinedEtfRate - this.inflation) / 100;
                 if (realAnnualRate <= 0.001) realAnnualRate = 0.001; 
@@ -280,32 +297,51 @@
                 }
                 return Math.ceil(months / 12);
             },
+            // 【核心重构：嵌入国寿海外傲瑞盛世真实图表数据】
             hkSimResults() {
-                const growthMultipliers = {
-                    1: 0, 2: 0.084, 3: 0.183, 4: 0.331, 5: 0.654, 6: 1.006,
-                    10: 1.454, 15: 2.069, 20: 3.02, 30: 6.204, 40: 12.037,
-                    50: 22.595, 60: 42.414, 70: 79.618, 80: 149.45
+                // 读取真实预期退保金数据，除以基准 50 万得到每年的真实系数
+                const getExactMultiplier = (year) => {
+                    const rawData = {
+                        1:0, 2:42475, 3:91578, 4:165895, 5:327445, 6:503390, 7:570165, 8:599135, 9:651165, 10:727210,
+                        11:763358, 12:802673, 13:846488, 14:909558, 15:1034528, 16:1097370, 17:1159878, 18:1235130, 19:1307853, 20:1510133,
+                        21:1599103, 22:1693758, 23:1805250, 24:1928270, 25:2087618, 26:2215640, 27:2360580, 28:2522478, 29:2704260, 30:3102185,
+                        40:6018590, 50:11297720, 60:21207375, 70:39809160, 80:74727263, 90:140273350, 100:263312358
+                    };
+                    if (year <= 0) return 0;
+                    if (rawData[year] !== undefined) return rawData[year] / 500000;
+                    
+                    // 对于未直接列出的年份，通过前后十年的复利平滑计算
+                    let prevY = Math.floor(year/10)*10;
+                    let nextY = prevY + 10;
+                    if (prevY >= 100) return (rawData[100] / 500000) * Math.pow(1.065, year - 100); 
+                    
+                    let rate = Math.pow(rawData[nextY] / rawData[prevY], 1 / (nextY - prevY)) - 1;
+                    return (rawData[prevY] * Math.pow(1 + rate, year - prevY)) / 500000;
                 };
-                const getAnnualRate = (year) => {
-                    if (year < 6) return 0.03; if (year < 10) return 0.096; if (year < 15) return 0.073; 
-                    if (year < 20) return 0.078; if (year < 30) return 0.074; if (year < 40) return 0.068; return 0.065; 
-                };
+
                 let currentCV = 0, isInfinite = true, zeroYear = -1, cvAt80 = 0;
                 
                 for (let y = 1; y <= 100; y++) {
-                    if (y === this.hkInsurance.startYear) {
-                        let closestBaseYear = [1,2,3,4,5,6,10,15,20,30].reverse().find(iy => iy <= y);
-                        currentCV = this.hkInsurance.principal * growthMultipliers[closestBaseYear];
-                        for(let fillYear = closestBaseYear; fillYear < y; fillYear++) { currentCV *= (1 + getAnnualRate(fillYear)); }
-                    }
-                    if (y >= this.hkInsurance.startYear) {
-                        currentCV -= this.hkPayoutAmount;
-                        if (currentCV <= 0 && zeroYear === -1) { zeroYear = (y - this.hkInsurance.startYear); isInfinite = false; }
-                        if (currentCV > 0) { currentCV *= (1 + getAnnualRate(y)); } else { currentCV = 0; }
+                    let previousMultiplier = getExactMultiplier(y - 1);
+                    let currentMultiplier = getExactMultiplier(y);
+
+                    if (y < this.hkInsurance.startYear) {
+                        // 积累期：严格按照利益演示表增长
+                        currentCV = this.hkInsurance.principal * currentMultiplier;
+                    } else {
+                        // 提取期：先增长，后扣费
+                        let growthRate = previousMultiplier > 0 ? (currentMultiplier / previousMultiplier - 1) : 0;
+                        currentCV = currentCV * (1 + growthRate) - this.hkPayoutAmount;
+
+                        if (currentCV <= 0 && zeroYear === -1) { 
+                            zeroYear = (y - this.hkInsurance.startYear + 1); 
+                            isInfinite = false; 
+                            currentCV = 0;
+                        }
                     }
                     if (y === 80) cvAt80 = currentCV > 0 ? currentCV : 0;
                 }
-                return { isInfinite: isInfinite, yearsToZero: zeroYear, cvAtYear80: cvAt80 };
+                return { isInfinite: isInfinite, yearsToZero: zeroYear, cvAt80: cvAt80 };
             },
             yearsToDeplete() {
                 let balance = this.fireTarget, years = 0;
@@ -316,6 +352,7 @@
                 while (balance > 0 && years < 100) {
                     years++;
                     let insuranceIncome = 0;
+                    // 保险派发现金流对冲
                     if (years >= this.hkInsurance.startYear) {
                         if (simResults.isInfinite || (years - this.hkInsurance.startYear < simResults.yearsToZero)) {
                             insuranceIncome = this.hkPayoutAmount;
@@ -324,6 +361,7 @@
                     let neededFromPool = currentWithdrawal - insuranceIncome;
                     if (neededFromPool > 0) balance -= neededFromPool;
                     if (balance <= 0) break;
+                    
                     balance = balance * (1 + realReturnRate);
                     currentWithdrawal = currentWithdrawal * (1 + (this.inflation / 100));
                 }
@@ -346,43 +384,26 @@
                 etf.weight = Number(((etf.amount / this.stockMonthly) * 100).toFixed(1)); 
             },
             recalculateAllEtfAmounts() { this.etfPortfolio.forEach((_, index) => { this.updateEtfAmount(index); }); },
-            
-            // 新增：处理下拉框选择事件
             onEtfChange(index) {
-                let selectedName = this.etfPortfolio[index].name;
-                let matchedEtf = this.availableETFs.find(e => e.name === selectedName);
-                if (matchedEtf) {
-                    this.etfPortfolio[index].rate = matchedEtf.rate;
-                }
+                let matchedEtf = this.availableETFs.find(e => e.name === this.etfPortfolio[index].name);
+                if (matchedEtf) this.etfPortfolio[index].rate = matchedEtf.rate;
             },
-            // 新增：添加一个空的/默认的资产槽位
             addEtf() {
-                this.etfPortfolio.push({
-                    name: '标普500 (美股大盘)', // 默认推个稳健的
-                    rate: 10.0,
-                    weight: 0,
-                    amount: 0
-                });
+                this.etfPortfolio.push({ name: '标普500 (美股大盘)', rate: 10.0, weight: 0, amount: 0 });
             },
-            // 新增：删除指定索引的资产
-            removeEtf(index) {
-                this.etfPortfolio.splice(index, 1);
-                // 删除后由于比例发生变化，可以选择提醒用户，或者自动平摊（这里选择由用户手动调整剩余比例，因为自动平摊可能违背投资意愿）
-            }
+            removeEtf(index) { this.etfPortfolio.splice(index, 1); }
         },
         watch: {
             $data: {
-                handler(val) { localStorage.setItem('fireCalculatorDataV4', JSON.stringify(val)); },
+                handler(val) { localStorage.setItem('fireCalculatorDataV6', JSON.stringify(val)); },
                 deep: true
             }
         },
         mounted() {
-            const savedData = localStorage.getItem('fireCalculatorDataV4');
+            const savedData = localStorage.getItem('fireCalculatorDataV6');
             if (savedData) {
-                try {
-                    const parsed = JSON.parse(savedData);
-                    Object.assign(this.$data, parsed);
-                } catch (e) { console.error('加载本地数据失败', e); }
+                try { Object.assign(this.$data, JSON.parse(savedData)); } 
+                catch (e) { console.error('加载本地数据失败', e); }
             } else {
                 Object.keys(this.expenses).forEach(key => this.updateExpenseFromAnnual(key));
                 this.recalculateAllEtfAmounts();
