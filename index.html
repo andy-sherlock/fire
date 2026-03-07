@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FIRE 退休与资产计算器 v6 (精准数据版)</title>
+    <title>FIRE 退休与资产计算器 v7 (精准税收版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
-        /* 自定义滑块颜色 */
         input[type=range] { accent-color: #3b82f6; }
     </style>
 </head>
@@ -69,9 +68,8 @@
             </div>
             <div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg leading-relaxed border border-slate-100">
                 这里的通胀率会：<br>
-                ① 从你退休后的投资回报里扣除，用来估算资金「按当前购买力」能撑多久；<br>
-                ② 从你定投储蓄阶段的收益里扣除，计算资产的真实增长速度。<br>
-                <span class="text-gray-400">（这只是用于压力测试的简化模型，并非严谨的宏观经济预测）</span>
+                ① 从你退休后的投资回报里扣除，估算资金「按当前购买力」能撑多久；<br>
+                ② 从你定投储蓄阶段的收益里扣除，计算资产的真实增长速度。
             </div>
         </div>
     </div>
@@ -85,11 +83,11 @@
                 
                 <div class="flex space-x-4 mb-4">
                     <div class="flex-1">
-                        <label class="block text-sm font-semibold mb-1">计划每月定投总额 (¥)</label>
+                        <label class="block text-sm font-semibold mb-1">每月定投 (¥)</label>
                         <input type="number" v-model.number="stockMonthly" @input="updateStockAnnual" class="w-full border border-green-300 rounded px-2 py-2 font-bold text-green-700 bg-white">
                     </div>
                     <div class="flex-1">
-                        <label class="block text-sm font-semibold mb-1">计划每年总投入 (¥)</label>
+                        <label class="block text-sm font-semibold mb-1">每年总投 (¥)</label>
                         <input type="number" v-model.number="stockAnnual" @input="updateStockMonthly" class="w-full border border-green-300 rounded px-2 py-2 font-bold text-green-700 bg-white">
                     </div>
                 </div>
@@ -134,18 +132,36 @@
                     <span class="mr-1 text-lg leading-none">+</span> 添加新资产
                 </button>
                 
-                <div class="pt-4 border-t border-green-200 text-right">
+                <div class="pt-4 border-t border-green-200 text-right mb-4">
                     <span class="text-gray-600">组合综合预估年化: </span>
                     <span class="font-bold text-green-600 text-lg">{{ combinedEtfRate.toFixed(2) }}%</span>
                 </div>
                 
-                <div class="mt-4 bg-white p-4 rounded-lg border border-green-200 text-center">
+                <div class="bg-white p-4 rounded-lg border border-green-200 text-center relative overflow-hidden">
                     <h4 class="font-bold text-gray-700 mb-2">🎯 距离实现 FIRE 还需要存多久？</h4>
                     <div v-if="stockMonthly <= 0" class="text-red-500 text-sm">请设置定投金额以积累财富</div>
                     <div v-else-if="totalEtfAmount !== stockMonthly" class="text-orange-500 text-sm font-bold">
                         分配总金额与月投入差 ¥{{ Math.abs(stockMonthly - totalEtfAmount) }}，请调整。
                     </div>
-                    <div v-else class="text-3xl font-extrabold text-green-600">{{ yearsToFire }} 年</div>
+                    <div v-else>
+                        <div class="text-3xl font-extrabold text-green-600 mb-3">{{ yearsToFire }} 年</div>
+                        <div class="bg-green-50 border border-green-100 rounded p-2 text-xs flex justify-between items-center text-gray-600">
+                            <div class="text-center flex-1">
+                                <div class="text-gray-400 mb-1">累计投入本金</div>
+                                <div class="font-bold text-gray-700">¥{{ Math.round(stockRetirementSnapshot.principal).toLocaleString() }}</div>
+                            </div>
+                            <div class="text-green-300 mx-1">+</div>
+                            <div class="text-center flex-1">
+                                <div class="text-gray-400 mb-1">预估复利收益</div>
+                                <div class="font-bold text-green-600">¥{{ Math.round(stockRetirementSnapshot.profit).toLocaleString() }}</div>
+                            </div>
+                            <div class="text-green-300 mx-1">=</div>
+                            <div class="text-center flex-1">
+                                <div class="text-gray-400 mb-1">达成目标总额</div>
+                                <div class="font-bold text-gray-700">¥{{ Math.round(stockRetirementSnapshot.total).toLocaleString() }}</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -187,7 +203,7 @@
 
                 <div class="mt-4 text-xs text-slate-500 bg-white p-3 rounded-lg leading-relaxed border border-slate-200">
                     <span class="font-bold text-purple-600 mb-1 block">📌 底层数据说明：</span>
-                    当前计算引擎已完全加载并适配<b>【国S海W-傲瑞盛世】</b>真实利益演示表数据。模拟逻辑严格遵循保单前 100 年真实的非线性增长率（预期第6年回本，后期 IRR 逼近 6.50%）。取款会等比例消耗真实账户现金价值。
+                    当前计算引擎已完全加载并适配<b>【国S海W-傲瑞盛世】</b>真实利益演示表数据。模拟逻辑严格遵循保单前 100 年真实的非线性增长率。
                 </div>
             </div>
         </div>
@@ -195,37 +211,50 @@
 
     <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-indigo-500">
         <h2 class="text-xl font-bold mb-4">🏖️ 退休后资金能花多少年 (按购买力)</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div class="bg-gray-50 p-4 rounded border border-gray-100">
-                <label class="block font-semibold mb-2 text-gray-700">1) 大盘年平均回报率 (名义)</label>
-                <div class="flex items-center space-x-3 mb-3">
-                    <input type="range" min="0" max="20" step="0.5" v-model.number="postRetire.returnRate" class="flex-1" style="accent-color: #6366f1;">
-                    <input type="number" v-model.number="postRetire.returnRate" step="0.5" class="w-20 border rounded px-2 py-1 text-center font-bold text-indigo-600">
+                <label class="block font-semibold mb-2 text-gray-700">1) 退休后预估年化</label>
+                <div class="flex items-center space-x-2 mb-3">
+                    <input type="range" min="0" max="15" step="0.5" v-model.number="postRetire.returnRate" class="flex-1" style="accent-color: #6366f1;">
+                    <input type="number" v-model.number="postRetire.returnRate" step="0.5" class="w-16 border rounded px-1 py-1 text-center font-bold text-indigo-600">
                     <span class="text-gray-500">%</span>
                 </div>
                 <p class="text-xs text-slate-500 leading-relaxed">
-                    这是投资账户的「名义年化收益率」，没扣通胀之前。由于退休后需要求稳，建议此处设定略低于定投期的激进回报率。
+                    退休后投资求稳，建议此处设定略低于定投期的名义收益率。
                 </p>
             </div>
             
             <div class="bg-gray-50 p-4 rounded border border-gray-100">
-                <label class="block font-semibold mb-2 text-gray-700">2) 年平均提取率</label>
-                <div class="flex items-center space-x-3 mb-3">
-                    <input type="range" min="0" max="20" step="0.5" v-model.number="postRetire.withdrawalRate" class="flex-1" style="accent-color: #ec4899;">
-                    <input type="number" v-model.number="postRetire.withdrawalRate" step="0.5" class="w-20 border rounded px-2 py-1 text-center font-bold text-pink-600">
+                <label class="block font-semibold mb-2 text-gray-700">2) 每年资金提取率</label>
+                <div class="flex items-center space-x-2 mb-3">
+                    <input type="range" min="0" max="15" step="0.5" v-model.number="postRetire.withdrawalRate" class="flex-1" style="accent-color: #ec4899;">
+                    <input type="number" v-model.number="postRetire.withdrawalRate" step="0.5" class="w-16 border rounded px-1 py-1 text-center font-bold text-pink-600">
                     <span class="text-gray-500">%</span>
                 </div>
                 <p class="text-xs text-slate-500 leading-relaxed">
-                    你每年愿意从退休资金里花出去的比例（名义值）。经典的 FIRE 理论推荐 4% 的安全提取率。
+                    每年从总资金中花掉的比例（名义值）。经典的 FIRE 法则推荐 4%。
+                </p>
+            </div>
+
+            <div class="bg-orange-50 p-4 rounded border border-orange-100 relative">
+                <div class="absolute -top-3 right-3 bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded font-bold shadow-sm">新增</div>
+                <label class="block font-semibold mb-2 text-orange-800">3) 资本利得税率</label>
+                <div class="flex items-center space-x-2 mb-3">
+                    <input type="range" min="0" max="40" step="1" v-model.number="postRetire.capitalGainsTax" class="flex-1" style="accent-color: #f97316;">
+                    <input type="number" v-model.number="postRetire.capitalGainsTax" step="1" class="w-16 border rounded px-1 py-1 text-center font-bold text-orange-600">
+                    <span class="text-orange-500">%</span>
+                </div>
+                <p class="text-xs text-orange-700/80 leading-relaxed">
+                    <b class="text-orange-600">精准收税机制：</b>仅在您每年“卖出资产”提现时扣除。且根据成本法，<b>只对提现资金中的“利润部分”征税</b>，保本部分免税。
                 </p>
             </div>
         </div>
         
         <div class="bg-indigo-50 p-6 rounded-lg text-center border border-indigo-100">
-            <h3 class="font-bold text-indigo-800 mb-3 text-lg">3) 在这个「回报率减去通胀」和提取率下，资金按购买力能撑多久？</h3>
+            <h3 class="font-bold text-indigo-800 mb-3 text-lg">基于上述参数，你的资金按购买力能撑多久？</h3>
             <div v-if="yearsToDeplete === '永不枯竭'" class="text-3xl font-extrabold text-indigo-600">永不枯竭 🌟</div>
             <div v-else class="text-3xl font-extrabold text-pink-600">可支撑 {{ yearsToDeplete }} 年</div>
-            <p class="text-sm text-indigo-400 mt-2">计算已将保险每年派发的现金流纳入对冲补充</p>
+            <p class="text-sm text-indigo-400 mt-2">计算已自动扣除税务成本，并纳入保险派发的现金流对冲</p>
         </div>
     </div>
     
@@ -252,16 +281,9 @@
                 availableETFs: [
                     { name: '沪深300 (A股大盘)', rate: 8.0 },
                     { name: '中证500 (A股中小盘)', rate: 9.0 },
-                    { name: '红利低波 (A股收息)', rate: 6.0 },
                     { name: '标普500 (美股大盘)', rate: 10.0 },
                     { name: '纳指100 (美股科技)', rate: 15.0 },
-                    { name: '恒生科技 (港股科技)', rate: 8.0 },
-                    { name: '日经225 (日本大盘)', rate: 7.0 },
-                    { name: '黄金ETF (避险抗通胀)', rate: 5.0 },
-                    { name: '纯债基金 (稳健打底)', rate: 4.0 },
-                    { name: '货币基金 (灵活现金)', rate: 2.0 },
-                    { name: '比特币 (BTC 高风险)', rate: 25.0 },
-                    { name: '以太坊 (ETH 高风险)', rate: 30.0 }
+                    { name: '纯债基金 (稳健打底)', rate: 4.0 }
                 ],
                 etfPortfolio: [
                     { name: '标普500 (美股大盘)', rate: 10.0, weight: 18.5, amount: 1000 },
@@ -269,7 +291,8 @@
                     { name: '纯债基金 (稳健打底)', rate: 4.0, weight: 44.5, amount: 2400 }
                 ],
                 hkInsurance: { principal: 500000, startYear: 10 },
-                postRetire: { returnRate: 4.0, withdrawalRate: 4.0 }
+                // 新增 capitalGainsTax 字段
+                postRetire: { returnRate: 4.0, withdrawalRate: 4.0, capitalGainsTax: 20.0 }
             }
         },
         computed: {
@@ -284,11 +307,12 @@
                 return this.etfPortfolio.reduce((sum, etf) => sum + (etf.rate * (etf.amount / totalAmount)), 0);
             },
             hkPayoutAmount() { return this.hkInsurance.principal * (this.hkInsurance.startYear / 100); },
+            
+            // 核心收益/年限计算逻辑
             yearsToFire() {
                 if (this.stockMonthly <= 0 || this.totalEtfAmount !== this.stockMonthly) return 0;
                 let balance = 0, months = 0;
-                let realAnnualRate = (this.combinedEtfRate - this.inflation) / 100;
-                if (realAnnualRate <= 0.001) realAnnualRate = 0.001; 
+                let realAnnualRate = Math.max((this.combinedEtfRate - this.inflation) / 100, 0.001); 
                 let monthlyRate = Math.pow(1 + realAnnualRate, 1/12) - 1;
 
                 while (balance < this.fireTarget && months < 1200) { 
@@ -297,73 +321,102 @@
                 }
                 return Math.ceil(months / 12);
             },
-            // 【核心重构：嵌入国寿海外傲瑞盛世真实图表数据】
+            
+            // 新增：定投期资产本息拆解
+            stockRetirementSnapshot() {
+                let months = this.yearsToFire * 12;
+                if (months <= 0) return { principal: 0, profit: 0, total: 0 };
+                
+                let balance = 0, principal = 0;
+                let realAnnualRate = Math.max((this.combinedEtfRate - this.inflation) / 100, 0.001); 
+                let monthlyRate = Math.pow(1 + realAnnualRate, 1/12) - 1;
+
+                for(let i=0; i < months; i++) {
+                    balance = balance * (1 + monthlyRate) + this.stockMonthly;
+                    principal += this.stockMonthly;
+                }
+                return { total: balance, principal: principal, profit: balance - principal };
+            },
+
             hkSimResults() {
-                // 读取真实预期退保金数据，除以基准 50 万得到每年的真实系数
                 const getExactMultiplier = (year) => {
                     const rawData = {
                         1:0, 2:42475, 3:91578, 4:165895, 5:327445, 6:503390, 7:570165, 8:599135, 9:651165, 10:727210,
                         11:763358, 12:802673, 13:846488, 14:909558, 15:1034528, 16:1097370, 17:1159878, 18:1235130, 19:1307853, 20:1510133,
-                        21:1599103, 22:1693758, 23:1805250, 24:1928270, 25:2087618, 26:2215640, 27:2360580, 28:2522478, 29:2704260, 30:3102185,
-                        40:6018590, 50:11297720, 60:21207375, 70:39809160, 80:74727263, 90:140273350, 100:263312358
+                        30:3102185, 40:6018590, 50:11297720, 60:21207375, 70:39809160, 80:74727263, 90:140273350, 100:263312358
                     };
                     if (year <= 0) return 0;
                     if (rawData[year] !== undefined) return rawData[year] / 500000;
-                    
-                    // 对于未直接列出的年份，通过前后十年的复利平滑计算
                     let prevY = Math.floor(year/10)*10;
                     let nextY = prevY + 10;
                     if (prevY >= 100) return (rawData[100] / 500000) * Math.pow(1.065, year - 100); 
-                    
                     let rate = Math.pow(rawData[nextY] / rawData[prevY], 1 / (nextY - prevY)) - 1;
                     return (rawData[prevY] * Math.pow(1 + rate, year - prevY)) / 500000;
                 };
 
                 let currentCV = 0, isInfinite = true, zeroYear = -1, cvAt80 = 0;
-                
                 for (let y = 1; y <= 100; y++) {
-                    let previousMultiplier = getExactMultiplier(y - 1);
-                    let currentMultiplier = getExactMultiplier(y);
+                    let prevM = getExactMultiplier(y - 1);
+                    let currM = getExactMultiplier(y);
 
                     if (y < this.hkInsurance.startYear) {
-                        // 积累期：严格按照利益演示表增长
-                        currentCV = this.hkInsurance.principal * currentMultiplier;
+                        currentCV = this.hkInsurance.principal * currM;
                     } else {
-                        // 提取期：先增长，后扣费
-                        let growthRate = previousMultiplier > 0 ? (currentMultiplier / previousMultiplier - 1) : 0;
+                        let growthRate = prevM > 0 ? (currM / prevM - 1) : 0;
                         currentCV = currentCV * (1 + growthRate) - this.hkPayoutAmount;
-
-                        if (currentCV <= 0 && zeroYear === -1) { 
-                            zeroYear = (y - this.hkInsurance.startYear + 1); 
-                            isInfinite = false; 
-                            currentCV = 0;
-                        }
+                        if (currentCV <= 0 && zeroYear === -1) { zeroYear = (y - this.hkInsurance.startYear + 1); isInfinite = false; currentCV = 0; }
                     }
                     if (y === 80) cvAt80 = currentCV > 0 ? currentCV : 0;
                 }
                 return { isInfinite: isInfinite, yearsToZero: zeroYear, cvAt80: cvAt80 };
             },
+
+            // 重构：加入卖出扣税逻辑 (平均成本法)
             yearsToDeplete() {
-                let balance = this.fireTarget, years = 0;
-                let currentWithdrawal = this.fireTarget * (this.postRetire.withdrawalRate / 100);
+                // 初始总资产设定为计算出的真实总额（或目标额），并继承定投期沉淀的税务成本基数
+                let balance = this.fireTarget; 
+                let snapshot = this.stockRetirementSnapshot;
+                // 成本基数 (买入本金)
+                let costBasis = snapshot.total > 0 ? balance * (snapshot.principal / snapshot.total) : balance; 
+                
+                let years = 0;
+                let netWithdrawal = balance * (this.postRetire.withdrawalRate / 100);
                 let realReturnRate = (this.postRetire.returnRate - this.inflation) / 100;
                 let simResults = this.hkSimResults;
+                let taxRate = (this.postRetire.capitalGainsTax || 0) / 100;
 
                 while (balance > 0 && years < 100) {
                     years++;
                     let insuranceIncome = 0;
-                    // 保险派发现金流对冲
                     if (years >= this.hkInsurance.startYear) {
                         if (simResults.isInfinite || (years - this.hkInsurance.startYear < simResults.yearsToZero)) {
                             insuranceIncome = this.hkPayoutAmount;
                         }
                     }
-                    let neededFromPool = currentWithdrawal - insuranceIncome;
-                    if (neededFromPool > 0) balance -= neededFromPool;
-                    if (balance <= 0) break;
                     
+                    // 你实际需要从股票账户提取的净现金
+                    let neededFromPoolNet = netWithdrawal - insuranceIncome;
+                    
+                    if (neededFromPoolNet > 0) {
+                        // 动态计算当前账户的利润率
+                        let profitRatio = balance > costBasis ? (balance - costBasis) / balance : 0;
+                        
+                        // 反推为了拿到净现金，你需要卖出多少总额 (卖出总额 - 卖出总额 * 利润率 * 税率 = 净现金)
+                        let grossWithdrawal = neededFromPoolNet / (1 - taxRate * profitRatio);
+                        
+                        if (balance < grossWithdrawal) {
+                            balance = 0; break; // 破产
+                        }
+                        
+                        balance -= grossWithdrawal;
+                        // 按比例扣减税务成本基数
+                        costBasis -= grossWithdrawal * (1 - profitRatio); 
+                    }
+                    
+                    // 年底投资增长
                     balance = balance * (1 + realReturnRate);
-                    currentWithdrawal = currentWithdrawal * (1 + (this.inflation / 100));
+                    // 消费每年按通胀递增
+                    netWithdrawal = netWithdrawal * (1 + (this.inflation / 100));
                 }
                 return years >= 100 ? '永不枯竭' : years;
             }
@@ -388,19 +441,17 @@
                 let matchedEtf = this.availableETFs.find(e => e.name === this.etfPortfolio[index].name);
                 if (matchedEtf) this.etfPortfolio[index].rate = matchedEtf.rate;
             },
-            addEtf() {
-                this.etfPortfolio.push({ name: '标普500 (美股大盘)', rate: 10.0, weight: 0, amount: 0 });
-            },
+            addEtf() { this.etfPortfolio.push({ name: '标普500 (美股大盘)', rate: 10.0, weight: 0, amount: 0 }); },
             removeEtf(index) { this.etfPortfolio.splice(index, 1); }
         },
         watch: {
             $data: {
-                handler(val) { localStorage.setItem('fireCalculatorDataV6', JSON.stringify(val)); },
+                handler(val) { localStorage.setItem('fireCalculatorDataV7', JSON.stringify(val)); },
                 deep: true
             }
         },
         mounted() {
-            const savedData = localStorage.getItem('fireCalculatorDataV6');
+            const savedData = localStorage.getItem('fireCalculatorDataV7');
             if (savedData) {
                 try { Object.assign(this.$data, JSON.parse(savedData)); } 
                 catch (e) { console.error('加载本地数据失败', e); }
