@@ -98,6 +98,24 @@ FIRE Journey 的改进做法：每次**连续抽 5 年**的历史数据，保留
 - 给所有人用、要跨设备同步和达标推送：需要 App 和少量服务器
 - 中国版要重做的是**数据接入**：没有 Plaid，改用账单导入、截图识别、天天基金净值
 
+### 记账数据接入方案（2026-10-04 补充）
+
+决定：用 iPhone 快捷指令"截图记账"代替银行直连。这个做法在国内记账 App 里已经很成熟（钱迹、蜜蜂记账、魔猫自动记账、iCost 等）。
+
+流程：付款后轻点手机背面两下（或按操作按钮 / 控制中心）→ 快捷指令截屏 → 本地识别文字 → 提取金额、商家、时间 → 写入记账 → 不留截图。
+
+要点：
+
+- 文字识别用快捷指令自带的"从图像中提取文本"，在手机本地完成，不上传
+- 提取金额和商家：先用规则（正则表达式）匹配支付宝、微信付款成功页；iOS 26 的"使用模型"可调用本地 Apple 智能模型，但国行机型是否可用需确认
+- 写入 App：原生 iOS App 可以通过 App Intents 直接接收；如果是网页，只能让快捷指令把记录追加到 iCloud 云盘里的文件，或通过网址参数传给网页，体验会差一截。这一点会影响"做网页还是做 App"的决定
+- 截图：据了解，快捷指令里"截屏"的结果可以直接交给识别，不必存进相册，也就不用删除（需实测确认）；若存了，"删除照片"默认会弹出确认
+- 局限：每次付款都要手动触发，忘了就漏记；银行卡自动扣款、退款、转账识别不到
+- 补救：每月导入一次支付宝、微信账单做对账，自动去重、补漏。日常靠快捷指令求"快"，月底靠账单求"全"
+- 持仓也可以用同样方法：截图基金 App 的持仓页，识别后更新份额
+
+另一条更省力的路：记账本身不自己做，直接用钱迹或蜜蜂记账记账，FIRE 引擎每月读取它们导出的账单文件。蜜蜂记账开源（Flutter，BSL 许可：个人使用免费，商业使用需授权），可作为参考或接入对象。
+
 ---
 
 ## 5. 现有代码状态（andy-sherlock/fire）
@@ -180,4 +198,7 @@ FIRE Journey 的改进做法：每次**连续抽 5 年**的历史数据，保留
 - 纳斯达克 100 年度收益：https://chartrow.com/nasdaq-100/returns
 - 国家统计局 2025 年 CPI：https://www.stats.gov.cn/sj/zxfbhjd/202601/t20260119_1962341.html
 - 上证所 Level-1 行情授权：https://www.sseinfo.com/services/assortment/level1/
+- 钱迹 iOS 自动记账：https://docs.qianjiapp.com/auto/qianji_auto_ios.html
+- 蜜蜂记账 BeeCount：https://github.com/TNT-Likely/BeeCount ；iOS 自动记账：https://count.beejz.com/docs/record/auto-ios/
+- 轻点背面（Apple 支持）：https://support.apple.com/guide/iphone/back-tap-iphaa57e7885/ios
 - FIRE 预测刷新问题（Beancount 论坛）：https://beancount.io/forum/t/your-dashboard-updates-monthly-your-data-changes-daily-the-fire-projection-refresh-problem/4156
