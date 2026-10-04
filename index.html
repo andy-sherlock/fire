@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FIRE 退休与资产计算器 v9 (全盘双轨统筹版)</title>
+    <title>FIRE 退休计算器 v10</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <style>
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -14,599 +14,533 @@
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        [v-cloak] { display: none; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
 
-<div id="app" class="max-w-5xl mx-auto space-y-6 pb-20">
-    <h1 class="text-3xl font-bold text-center text-blue-600 mb-8">🚀 FIRE 退休与资产计算器</h1>
+<div id="app" v-cloak class="max-w-5xl mx-auto space-y-6 pb-20">
+    <h1 class="text-2xl md:text-3xl font-bold text-center text-blue-600">🚀 FIRE 退休计算器</h1>
+    <p class="text-center text-xs text-gray-400 -mt-4">所有金额均已换算成「今天的购买力」，不用再自己脑补通胀</p>
 
-    <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-red-400">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-gray-100">
-            <h2 class="text-xl font-bold flex items-center mb-2 md:mb-0">💸 日常支出测算</h2>
-            <div class="text-left md:text-right bg-red-50 p-3 rounded-lg border border-red-100">
-                <div class="text-sm text-gray-500 mb-1">总计年消费 / 平均月消费</div>
-                <div class="flex items-baseline space-x-2">
-                    <span class="text-red-500 font-extrabold text-2xl">¥ {{ totalAnnualExpense.toLocaleString() }}</span>
-                    <span class="text-gray-400">/年</span>
-                    <span class="text-gray-300 px-1">|</span>
-                    <span class="text-red-400 font-bold text-lg">¥ {{ totalMonthlyExpense.toLocaleString() }}</span>
-                    <span class="text-gray-400">/月</span>
+    <!-- ① 唯一的答案 -->
+    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-md border-t-4 border-green-500">
+        <div class="text-center">
+            <template v-if="fire.years === null">
+                <div class="text-sm text-gray-500 mb-1">按当前参数</div>
+                <div class="text-3xl md:text-4xl font-black text-red-500">到 {{ p.lifeAge }} 岁前都无法安全退休</div>
+                <p class="text-sm text-gray-500 mt-3">试试：多存一点、少花一点，或者看看下面「每年要花多少」。</p>
+            </template>
+            <template v-else>
+                <div class="text-sm text-gray-500 mb-1">{{ fire.years === 0 ? '好消息' : '照现在这样坚持，你将在' }}</div>
+                <div class="text-5xl md:text-6xl font-black text-green-600">
+                    <template v-if="fire.years === 0">现在就能退休</template>
+                    <template v-else>{{ fire.age }} <span class="text-2xl font-bold">岁</span></template>
                 </div>
+                <div class="text-lg font-bold text-gray-700 mt-2" v-if="fire.years > 0">实现财务自由（{{ fire.years }} 年后）</div>
+                <p class="text-sm text-gray-500 mt-3">
+                    退休后每年花 <b class="text-gray-700">¥{{ fmt(annualExpense) }}</b>（随通胀上涨），钱能一直撑到
+                    <b class="text-gray-700">{{ p.lifeAge }} 岁</b>，届时还剩
+                    <b class="text-blue-600">¥{{ fmt(fire.sim.endReal) }}</b>
+                </p>
+            </template>
+        </div>
+
+        <!-- 杠杆：哪个按钮最值得按 -->
+        <div v-if="fire.years !== null && fire.years > 0" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 text-sm">
+            <div class="bg-orange-50 border border-orange-100 rounded-lg p-3 text-center">
+                <div class="text-xs text-orange-700 mb-1">⚠️ 如果每年少赚 2%</div>
+                <div class="font-bold text-orange-700">{{ leverText(sensitivity.lowReturn) }}</div>
+            </div>
+            <div class="bg-green-50 border border-green-100 rounded-lg p-3 text-center">
+                <div class="text-xs text-green-700 mb-1">💪 每月多存 ¥1,000</div>
+                <div class="font-bold text-green-700">{{ leverText(sensitivity.moreSaving) }}</div>
+            </div>
+            <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 text-center">
+                <div class="text-xs text-blue-700 mb-1">✂️ 每月少花 ¥500</div>
+                <div class="font-bold text-blue-700">{{ leverText(sensitivity.lessSpending) }}</div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div v-for="(item, key) in expenses" :key="key" class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+        <!-- 一生的资产曲线 -->
+        <div class="mt-6">
+            <div class="flex justify-between items-baseline mb-1">
+                <h3 class="text-sm font-bold text-gray-700">一生的投资账户（今天的购买力）</h3>
+                <span class="text-xs text-gray-400 hidden sm:inline">鼠标在图上滑动查看每一年</span>
+            </div>
+            <div class="relative">
+                <svg viewBox="0 0 720 240" width="720" height="240" style="width:100%;height:auto;display:block" class="select-none touch-none"
+                     @mousemove="onChartMove" @touchmove.prevent="onChartMove" @mouseleave="hoverIdx = null">
+                    <g v-for="t in chart.yTicks" :key="'y'+t.v">
+                        <line :x1="chart.L" :x2="chart.W - chart.R" :y1="t.y" :y2="t.y" stroke="#eef0f3" stroke-width="1"/>
+                        <text :x="chart.L - 6" :y="t.y + 4" text-anchor="end" font-size="11" fill="#9ca3af">{{ t.label }}</text>
+                    </g>
+                    <text v-for="t in chart.xTicks" :key="'x'+t.age" :x="t.x" :y="chart.H - 6" text-anchor="middle" font-size="11" fill="#9ca3af">{{ t.age }}岁</text>
+                    <rect v-if="chart.fireX !== null" :x="chart.fireX" :y="chart.T" :width="chart.W - chart.R - chart.fireX" :height="chart.H - chart.T - chart.B" fill="#f0fdf4"/>
+                    <path :d="chart.area" fill="#3b82f6" fill-opacity="0.12"/>
+                    <path :d="chart.line" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linejoin="round"/>
+                    <g v-if="chart.fireX !== null">
+                        <line :x1="chart.fireX" :x2="chart.fireX" :y1="chart.T" :y2="chart.H - chart.B" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4 3"/>
+                        <text :x="chart.fireX + 6" :y="chart.T + 12" font-size="11" fill="#15803d" font-weight="bold">🎉 {{ fire.age }}岁 退休</text>
+                    </g>
+                    <g v-if="hoverPoint">
+                        <line :x1="hoverPoint.x" :x2="hoverPoint.x" :y1="chart.T" :y2="chart.H - chart.B" stroke="#6b7280" stroke-width="1"/>
+                        <circle :cx="hoverPoint.x" :cy="hoverPoint.y" r="5" fill="#3b82f6" stroke="#fff" stroke-width="2"/>
+                    </g>
+                </svg>
+                <div v-if="hoverPoint" class="absolute top-0 pointer-events-none bg-white/95 border border-gray-200 shadow rounded px-2 py-1 text-xs"
+                     :style="{ left: hoverPoint.pct + '%', transform: hoverPoint.pct > 60 ? 'translateX(-105%)' : 'translateX(5%)' }">
+                    <div class="font-bold text-gray-700">{{ hoverPoint.row.age }} 岁 · {{ hoverPoint.row.phase }}</div>
+                    <div class="text-gray-600">账户 ¥{{ fmt(hoverPoint.row.balReal) }}</div>
+                    <div v-if="hoverPoint.row.insReal > 0" class="text-purple-600">保险领取 ¥{{ fmt(hoverPoint.row.insReal) }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ② 关于你 -->
+    <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-gray-400">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">🙋 关于你</h2>
+            <button @click="resetAll" class="text-xs text-gray-400 hover:text-red-500 border border-gray-200 rounded px-2 py-1">恢复默认</button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+            <label class="block"><span class="text-gray-600 font-semibold">现在几岁</span>
+                <input type="number" min="0" max="100" v-model.number="p.currentAge" class="mt-1 w-full border border-gray-300 rounded px-2 py-2 font-bold"></label>
+            <label class="block"><span class="text-gray-600 font-semibold">钱要够用到几岁</span>
+                <input type="number" min="1" max="120" v-model.number="p.lifeAge" class="mt-1 w-full border border-gray-300 rounded px-2 py-2 font-bold"></label>
+            <label class="block"><span class="text-gray-600 font-semibold">现有可投资资产 (¥)</span>
+                <input type="number" min="0" v-model.number="p.currentAssets" class="mt-1 w-full border border-gray-300 rounded px-2 py-2 font-bold"></label>
+            <label class="block"><span class="text-gray-600 font-semibold">预期年通胀 (%)</span>
+                <input type="number" step="0.1" v-model.number="p.inflation" class="mt-1 w-full border border-gray-300 rounded px-2 py-2 font-bold"></label>
+            <label class="block"><span class="text-gray-600 font-semibold">投资收益税率 (%)</span>
+                <input type="number" step="1" min="0" max="50" v-model.number="p.taxPct" class="mt-1 w-full border border-gray-300 rounded px-2 py-2 font-bold"></label>
+        </div>
+        <p class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg mt-4 leading-relaxed border border-slate-100">
+            💡 税率说明：通过境内公募基金（含 QDII）投资，个人买卖差价目前一般暂免个税，可填 0；通过境外券商直接持有境外资产，一般按 20% 财产转让所得申报。只对「赚到的部分」收税，本金不收。具体以最新政策为准。
+        </p>
+    </div>
+
+    <!-- ③ 每年要花多少 -->
+    <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-red-400">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-gray-100">
+            <h2 class="text-xl font-bold mb-2 md:mb-0">💸 每年要花多少</h2>
+            <div class="text-left md:text-right bg-red-50 p-3 rounded-lg border border-red-100">
+                <div class="flex items-baseline space-x-2">
+                    <span class="text-red-500 font-extrabold text-2xl">¥ {{ fmt(annualExpense) }}</span>
+                    <span class="text-gray-400">/年</span>
+                    <span class="text-gray-300 px-1">|</span>
+                    <span class="text-red-400 font-bold text-lg">¥ {{ fmt(annualExpense / 12) }}</span>
+                    <span class="text-gray-400">/月</span>
+                </div>
+                <div class="text-[11px] text-gray-400 mt-1">经验法则（4% 法则）需要攒下约 ¥{{ fmt(annualExpense * 25) }}</div>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div v-for="(item, key) in p.expenses" :key="key" class="bg-gray-50 p-4 rounded-lg border border-gray-100">
                 <label class="block font-semibold mb-3">{{ item.name }}</label>
                 <div class="flex space-x-2 mb-3">
                     <div class="flex-1">
                         <span class="text-xs text-gray-500">月费用(¥)</span>
-                        <input type="number" v-model.number="item.monthly" @input="updateExpenseFromMonthly(key)" class="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white">
+                        <input type="number" min="0" :value="Math.round(item.annual / 12)" @input="item.annual = num($event.target.value) * 12" class="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white">
                     </div>
                     <div class="flex-1">
                         <span class="text-xs text-gray-500">年费用(¥)</span>
-                        <input type="number" v-model.number="item.annual" @input="updateExpenseFromAnnual(key)" class="w-full border border-red-200 rounded px-2 py-1 text-sm font-bold text-red-600 bg-red-50">
+                        <input type="number" min="0" v-model.number="item.annual" class="w-full border border-red-200 rounded px-2 py-1 text-sm font-bold text-red-600 bg-red-50">
                     </div>
                 </div>
-                <input type="range" min="0" max="100000" step="500" v-model.number="item.annual" @input="updateExpenseFromAnnual(key)" class="w-full accent-red-400">
+                <input type="range" min="0" max="100000" step="500" v-model.number="item.annual" class="w-full" style="accent-color:#f87171">
             </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-400 flex flex-col justify-center">
-            <h2 class="text-xl font-bold mb-4">🎯 FIRE 退休所需总资金</h2>
-            <div class="text-4xl font-extrabold text-blue-600 text-center py-4">¥ {{ fireTarget.toLocaleString() }}</div>
-            <div class="mt-2 text-xs text-slate-500 bg-slate-50 p-3 rounded-lg leading-relaxed border border-slate-100">
-                以当前物价计算，你需要攒下大约年支出 25 倍的本金作为安全垫。
-            </div>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-yellow-400">
-            <h2 class="text-xl font-bold mb-4">🌍 宏观经济假设 (中国环境)</h2>
-            <div class="mb-4">
-                <label class="block font-semibold mb-2">预期年通胀率 (%)</label>
-                <input type="number" v-model.number="inflation" step="0.1" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50 text-lg font-bold">
-            </div>
-            <div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg leading-relaxed border border-slate-100">
-                此通胀率将用于折算你未来的资产购买力，确保你算出的每一分钱都是<b>「相当于今天价值的真金白银」</b>。
-            </div>
-        </div>
-    </div>
-
+    <!-- ④ 每月存多少 & 怎么投 -->
     <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-green-500">
-        <h2 class="text-xl font-bold mb-6">📈 资产双轨驱动 (定投 + 保险)</h2>
-        
-        <div class="mb-8 bg-gradient-to-r from-green-50 via-white to-purple-50 p-6 rounded-xl border border-green-200 shadow-sm text-center relative overflow-hidden">
-            <h3 class="text-lg font-bold text-gray-800 mb-2">🏆 终极测算：双轨合力，多少年能达到 FIRE 目标？</h3>
-            <div v-if="stockMonthly <= 0" class="text-red-500 font-bold">请先配置定投金额与资产组合</div>
-            <div v-else-if="totalEtfAmount !== stockMonthly" class="text-orange-500 font-bold">分配总金额与月投入不符，请微调使仓位达100%。</div>
-            <div v-else>
-                <div class="text-5xl font-black text-green-600 mb-2">
-                    {{ combinedYearsToFire === '>100' ? '超过 100' : combinedYearsToFire }} <span class="text-2xl font-bold">年</span>
+        <h2 class="text-xl font-bold mb-4">📊 每月存多少 & 怎么投</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5 text-sm">
+            <label class="block"><span class="font-semibold">每月定投 (¥)</span>
+                <input type="number" min="0" v-model.number="p.monthly" class="mt-1 w-full border border-green-300 rounded px-2 py-2 font-bold text-green-700"></label>
+            <label class="block"><span class="font-semibold">相当于每年 (¥)</span>
+                <input type="number" min="0" :value="p.monthly * 12" @input="p.monthly = Math.round(num($event.target.value) / 12)" class="mt-1 w-full border border-green-300 rounded px-2 py-2 font-bold text-green-700"></label>
+            <label class="block"><span class="font-semibold">退休后预估名义年化 (%)</span>
+                <input type="number" step="0.5" v-model.number="p.postReturn" class="mt-1 w-full border border-indigo-300 rounded px-2 py-2 font-bold text-indigo-600"></label>
+        </div>
+        <p class="text-xs text-gray-400 -mt-3 mb-4">定投金额按「今天的钱」理解：假设工资随通胀上涨，每年定投额也跟着通胀上调。退休后建议设得比定投期保守。</p>
+
+        <div class="flex justify-between items-end mb-3 pb-2 border-b border-green-200">
+            <p class="text-xs text-gray-500 font-bold">定投组合：</p>
+            <p class="text-xs font-bold" :class="weightOk ? 'text-green-600' : 'text-orange-500'">
+                仓位合计 {{ totalWeight.toFixed(1) }}%
+                <button v-if="!weightOk" @click="normalizeWeights" class="ml-2 underline">一键调到 100%</button>
+            </p>
+        </div>
+        <div class="space-y-3 mb-3">
+            <div v-for="(etf, index) in p.portfolio" :key="index" class="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-sm bg-white p-3 rounded shadow-sm border border-gray-200 relative">
+                <div class="flex flex-col w-full sm:w-1/3 gap-1">
+                    <select v-model="etf.name" @change="onEtfChange(etf)" class="border border-gray-300 rounded px-1 py-1 bg-gray-50">
+                        <option v-for="opt in presetETFs" :key="opt.name" :value="opt.name">{{ opt.name }}</option>
+                        <option value="自定义">自定义</option>
+                    </select>
+                    <div class="flex items-center text-xs mt-1">
+                        <span class="text-gray-500 mr-1">名义年化:</span>
+                        <input type="number" step="0.1" v-model.number="etf.rate" class="w-14 border rounded px-1 text-center py-0.5 font-bold">
+                        <span class="text-gray-500 ml-1">%</span>
+                    </div>
                 </div>
-                <p class="text-sm text-gray-600 mb-4">
-                    达到 <span class="font-bold text-blue-600 text-base">¥ {{ fireTarget.toLocaleString() }}</span> 的安全底线（以当前购买力计）
-                </p>
-                <div v-if="combinedYearsToFire !== '>100'" class="flex flex-wrap justify-center items-center gap-2 text-xs md:text-sm">
-                    <div class="bg-green-100 border border-green-200 text-green-800 px-3 py-1.5 rounded-lg shadow-sm">
-                        <span class="block text-[10px] text-green-600/80 mb-0.5 uppercase">ETF 税后真实购买力</span>
-                        <span class="font-bold">¥{{ Math.round(combinedFireDetails.etf).toLocaleString() }}</span>
+                <div class="flex items-center w-full flex-1 gap-2">
+                    <div class="flex items-center border rounded px-1 bg-gray-50 w-24">
+                        <span class="text-gray-400 px-1">¥</span>
+                        <input type="number" min="0" :value="Math.round(etf.weight / 100 * p.monthly)"
+                               @input="etf.weight = p.monthly > 0 ? Number((num($event.target.value) / p.monthly * 100).toFixed(1)) : 0"
+                               class="w-full bg-transparent text-center py-1 font-bold text-green-700 outline-none">
                     </div>
-                    <span class="text-gray-400 font-black">+</span>
-                    <div class="bg-purple-100 border border-purple-200 text-purple-800 px-3 py-1.5 rounded-lg shadow-sm">
-                        <span class="block text-[10px] text-purple-600/80 mb-0.5 uppercase">保险折现真实购买力</span>
-                        <span class="font-bold">¥{{ Math.round(combinedFireDetails.ins).toLocaleString() }}</span>
-                    </div>
-                    <span class="text-gray-400 font-black">=</span>
-                    <div class="bg-blue-100 border border-blue-200 text-blue-800 px-3 py-1.5 rounded-lg shadow-sm">
-                        <span class="block text-[10px] text-blue-600/80 mb-0.5 uppercase">目标总资产达成</span>
-                        <span class="font-black">¥{{ Math.round(combinedFireDetails.total).toLocaleString() }}</span>
+                    <input type="range" min="0" max="100" step="0.5" v-model.number="etf.weight" class="flex-1" style="accent-color:#22c55e;">
+                    <div class="flex items-center border rounded px-1 bg-gray-50 w-20 justify-center">
+                        <input type="number" min="0" max="100" step="0.5" v-model.number="etf.weight" class="w-12 bg-transparent text-center py-1 outline-none">
+                        <span class="text-gray-400">%</span>
                     </div>
                 </div>
+                <button @click="p.portfolio.splice(index, 1)" class="absolute -right-2 -top-2 bg-red-100 text-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold" title="删除">×</button>
             </div>
         </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="border p-5 rounded-xl border-green-200 bg-green-50/30 flex flex-col">
-                <h3 class="font-bold text-green-700 mb-4 text-lg">📊 组合定投引擎</h3>
-                
-                <div class="flex space-x-4 mb-4">
-                    <div class="flex-1">
-                        <label class="block text-sm font-semibold mb-1">每月定投 (¥)</label>
-                        <input type="number" v-model.number="stockMonthly" @input="updateStockAnnual" class="w-full border border-green-300 rounded px-2 py-2 font-bold text-green-700 bg-white">
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-sm font-semibold mb-1">每年总投 (¥)</label>
-                        <input type="number" v-model.number="stockAnnual" @input="updateStockMonthly" class="w-full border border-green-300 rounded px-2 py-2 font-bold text-green-700 bg-white">
-                    </div>
-                </div>
-
-                <div class="flex justify-between items-end mb-3 pb-2 border-b border-green-200">
-                    <p class="text-xs text-gray-500 font-bold">自建定投组合池：</p>
-                    <p class="text-xs font-bold" :class="totalEtfAmount === stockMonthly ? 'text-green-600' : 'text-orange-500'">
-                        分配进度: {{ totalEtfWeight.toFixed(1) }}% / ¥{{ totalEtfAmount }}
-                    </p>
-                </div>
-                
-                <div class="space-y-3 flex-1 mb-4">
-                    <div v-for="(etf, index) in etfPortfolio" :key="index" class="flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm bg-white p-3 rounded shadow-sm border border-gray-200 gap-3 relative group">
-                        <div class="flex flex-col w-full sm:w-1/3 gap-1">
-                            <select v-model="etf.name" @change="onEtfChange(index)" class="border border-gray-300 rounded px-1 py-1 text-sm bg-gray-50 outline-none truncate">
-                                <option v-for="opt in availableETFs" :key="opt.name" :value="opt.name">{{ opt.name }}</option>
-                                <option value="自定义...">自定义...</option>
-                            </select>
-                            <div class="flex items-center text-xs mt-1">
-                                <span class="text-gray-500 mr-1 whitespace-nowrap">名义年化:</span>
-                                <input type="number" step="0.1" v-model.number="etf.rate" class="w-14 border rounded px-1 text-center py-0.5 outline-none font-bold text-gray-700">
-                                <span class="text-gray-500 ml-1">%</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center w-full sm:w-auto flex-1 space-x-2">
-                            <div class="flex items-center border rounded px-1 bg-gray-50 flex-1 sm:flex-none">
-                                <span class="text-gray-400 px-1">¥</span>
-                                <input type="number" v-model.number="etf.amount" @input="updateEtfWeight(index)" class="w-full sm:w-16 outline-none bg-transparent text-center py-1 font-bold text-green-700">
-                            </div>
-                            <input type="range" min="0" max="100" step="0.5" v-model.number="etf.weight" @input="updateEtfAmount(index)" class="flex-1 mx-1 hidden sm:block" style="accent-color: #22c55e;">
-                            <div class="flex items-center border rounded px-1 bg-gray-50 w-20 sm:w-auto justify-center">
-                                <input type="number" v-model.number="etf.weight" @input="updateEtfAmount(index)" class="w-12 outline-none bg-transparent text-center py-1 text-gray-600">
-                                <span class="text-gray-400 px-1">%</span>
-                            </div>
-                        </div>
-                        <button @click="removeEtf(index)" class="absolute -right-2 -top-2 bg-red-100 text-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold sm:opacity-100 opacity-100">×</button>
-                    </div>
-                </div>
-
-                <div class="flex justify-between items-center mb-4 text-sm border-b border-green-200 pb-2">
-                    <span class="text-gray-600">组合综合名义年化: </span>
-                    <span class="font-bold text-green-600 text-lg">{{ combinedEtfRate.toFixed(2) }}%</span>
-                </div>
-
-                <div class="mt-4 bg-white p-4 rounded-lg border border-green-300 shadow-sm">
-                    <div class="mb-4">
-                        <label class="block font-bold text-green-800 mb-3">⏳ 计划定投年限 / 卖出提取点</label>
-                        <div class="flex items-center space-x-3">
-                            <input type="range" min="1" max="50" step="1" v-model.number="investYears" class="flex-1" style="accent-color: #16a34a;">
-                            <div class="flex items-center border border-green-400 rounded bg-green-50 px-2 py-1 shadow-inner w-24 justify-center">
-                                <input type="number" min="1" max="50" v-model.number="investYears" class="w-10 text-center font-bold text-green-700 outline-none bg-transparent">
-                                <span class="text-green-600 text-sm font-bold ml-1">年</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div v-if="stockMonthly > 0" class="bg-gray-50 rounded border border-gray-200 p-3 mt-2">
-                        <h4 class="text-center font-bold text-gray-700 mb-3 border-b pb-2">一次性全额卖出清算报告 (第 {{ investYears }} 年末)</h4>
-                        <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
-                            <div class="flex justify-between">
-                                <span class="text-gray-500">累计本金:</span>
-                                <span class="font-bold text-gray-700">¥{{ Math.round(investmentSummary.cumPrincipal).toLocaleString() }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-500">税前总收:</span>
-                                <span class="font-bold text-green-600">¥{{ Math.round(investmentSummary.preTaxProfit).toLocaleString() }}</span>
-                            </div>
-                            <div class="flex justify-between bg-orange-50 px-1 rounded">
-                                <span class="text-orange-700">缴税(20%):</span>
-                                <span class="font-bold text-orange-600">-¥{{ Math.round(investmentSummary.taxAmount).toLocaleString() }}</span>
-                            </div>
-                            <div class="flex justify-between bg-blue-50 px-1 rounded border border-blue-100">
-                                <span class="text-blue-700 font-bold">税后纯利:</span>
-                                <span class="font-bold text-blue-600">¥{{ Math.round(investmentSummary.postTaxProfit).toLocaleString() }}</span>
-                            </div>
-                        </div>
-                        <div class="mt-3 pt-3 border-t border-gray-200 flex flex-col items-center">
-                            <div class="text-gray-500 text-xs mb-1">税后落袋真金白银 (本金+税后纯利)</div>
-                            <div class="text-2xl font-black text-green-600">¥ {{ Math.round(investmentSummary.postTaxTotal).toLocaleString() }}</div>
-                            <div class="mt-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                实际税后等效年化回报率: <span class="font-bold">{{ investmentSummary.effRate.toFixed(2) }}%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="border p-5 rounded-xl border-purple-200 bg-purple-50/30 flex flex-col relative">
-                <h3 class="font-bold text-purple-700 mb-4 text-lg flex items-center">
-                    💼 香港分红险 (精算引擎)
-                    <span class="ml-2 bg-purple-600 text-white text-[10px] px-2 py-0.5 rounded-full font-normal">底层表核准</span>
-                </h3>
-                <div class="mb-4">
-                    <label class="block text-sm font-semibold mb-1 text-gray-700">已投入/拟投入总本金 (¥)</label>
-                    <input type="number" v-model.number="hkInsurance.principal" class="w-full border border-purple-300 rounded px-3 py-2 font-bold text-purple-700">
-                </div>
-                <div class="mb-4 bg-white p-4 rounded shadow-sm border border-purple-100 flex-1">
-                    <label class="block text-sm font-semibold mb-3 text-gray-700">🚰 提领方案制定</label>
-                    
-                    <div class="flex items-center space-x-3 mb-2">
-                        <span class="text-sm text-gray-600">第</span>
-                        <div class="flex items-center border border-purple-300 rounded bg-purple-50 px-1 shadow-inner w-16 justify-center">
-                            <input type="number" min="6" max="50" v-model.number="hkInsurance.startYear" class="w-8 text-center font-bold text-purple-700 outline-none bg-transparent">
-                        </div>
-                        <span class="text-sm text-gray-600">年起固定提取</span>
-                    </div>
-                    <input type="range" min="6" max="50" v-model.number="hkInsurance.startYear" class="w-full mb-3" style="accent-color: #a855f7;">
-                    
-                    <div class="text-center bg-purple-50 p-2 rounded text-sm text-purple-800 border border-purple-100">
-                        终身锁定提本金的 <span class="font-black text-lg">{{ hkInsurance.startYear }}%</span>
-                    </div>
-                </div>
-                
-                <div class="mt-auto bg-purple-100/50 p-4 rounded-lg border border-purple-200">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm font-semibold text-gray-700">每年固定领取金额：</span>
-                        <span class="text-xl font-bold text-purple-700">¥ {{ hkPayoutAmount.toLocaleString() }}</span>
-                    </div>
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm font-semibold text-gray-700">提现计划维持年限：</span>
-                        <span v-if="hkSimResults.isInfinite" class="text-lg font-bold text-green-600">终身永续 (源源不断)</span>
-                        <span v-else class="text-lg font-bold text-red-500">{{ hkSimResults.yearsToZero }} 年后枯竭</span>
-                    </div>
-                    <div class="pt-2 mt-2 border-t border-purple-200 flex justify-between items-center">
-                        <span class="text-xs text-gray-500">保单第80年剩余现金价值：</span>
-                        <span class="text-sm font-bold text-gray-700">¥ {{ Math.round(hkSimResults.cvAt80).toLocaleString() }}</span>
-                    </div>
-                </div>
-            </div>
+        <button @click="p.portfolio.push({ name: '自定义', rate: 6, weight: 0 })" class="w-full border-2 border-dashed border-green-200 text-green-600 rounded py-2 text-sm hover:bg-green-50">＋ 添加一个标的</button>
+        <div class="flex justify-between items-center mt-4 text-sm">
+            <span class="text-gray-600">组合综合名义年化</span>
+            <span class="font-bold text-green-600 text-lg">{{ portfolioRate.toFixed(2) }}%</span>
         </div>
+        <p v-if="portfolioRate > 10" class="text-xs text-orange-600 bg-orange-50 border border-orange-100 rounded p-2 mt-2">
+            ⚠️ 年化超过 10% 属于乐观假设。纳指过去十几年很强，但没有任何资产能保证几十年都这么涨——建议看看上面「少赚 2%」的结果。
+        </p>
+    </div>
 
-        <div class="mt-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm" v-if="stockMonthly > 0">
-            <h3 class="font-bold text-gray-800 mb-3 text-center md:text-left text-lg">📑 定投历程流水分析表（名义预估）</h3>
-            <div class="overflow-x-auto max-h-80 custom-scrollbar border border-gray-200 rounded-lg">
-                <table class="w-full text-sm text-center text-gray-600 min-w-[700px] relative">
-                    <thead class="bg-gray-100 text-gray-700 uppercase text-xs sticky top-0 z-10 shadow-sm">
-                        <tr>
-                            <th class="py-3 px-2 font-bold w-12">年份</th>
-                            <th class="py-3 px-2 font-bold">当年总投入</th>
-                            <th class="py-3 px-2 font-bold">累计投入本金</th>
-                            <th class="py-3 px-2 font-bold">运作资金<br><span class="text-[10px] font-normal text-gray-500">(上年底+当年投入)</span></th>
-                            <th class="py-3 px-2 font-bold text-green-600">当年纯收益</th>
-                            <th class="py-3 px-2 font-bold text-blue-600">年底资产总值</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 bg-white">
-                        <tr v-for="row in investmentTableData" :key="row.year" class="hover:bg-green-50/50 transition-colors">
-                            <td class="py-2 px-2 font-semibold text-gray-800 bg-gray-50/50">第 {{ row.year }} 年</td>
-                            <td class="py-2 px-2">¥{{ Math.round(row.contribution).toLocaleString() }}</td>
-                            <td class="py-2 px-2 font-medium">¥{{ Math.round(row.cumPrincipal).toLocaleString() }}</td>
-                            <td class="py-2 px-2 text-gray-500">¥{{ Math.round(row.investedAmount).toLocaleString() }}</td>
-                            <td class="py-2 px-2 text-green-600 font-semibold">+¥{{ Math.round(row.profit).toLocaleString() }}</td>
-                            <td class="py-2 px-2 text-blue-600 font-bold">¥{{ Math.round(row.endBalance).toLocaleString() }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <p class="text-[11px] text-gray-400 mt-2 text-center">注：本表展示为税前名义资产增长轨迹，利息按月复利计算。卖出退出的最终税务清算请参考上方清算展板。</p>
+    <!-- ⑤ 香港分红险 -->
+    <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-purple-500">
+        <h2 class="text-xl font-bold mb-1">💼 香港分红险</h2>
+        <p class="text-xs text-gray-400 mb-4">假设保费已一次性缴清（不占用每月定投），现金价值按底层演示表推算。领取的钱先用来付生活费，花不完的转入投资账户。</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <label class="block"><span class="font-semibold">总保费 (¥)</span>
+                <input type="number" min="0" v-model.number="p.ins.principal" class="mt-1 w-full border border-purple-300 rounded px-2 py-2 font-bold text-purple-700"></label>
+            <label class="block"><span class="font-semibold">从保单第几年开始领</span>
+                <input type="number" min="2" max="80" v-model.number="p.ins.startYear" class="mt-1 w-full border border-purple-300 rounded px-2 py-2 font-bold text-purple-700"></label>
+            <label class="block"><span class="font-semibold">每年领取保费的 (%)</span>
+                <input type="number" min="0" step="0.5" v-model.number="p.ins.payoutPct" class="mt-1 w-full border border-purple-300 rounded px-2 py-2 font-bold text-purple-700"></label>
+        </div>
+        <div class="mt-4 bg-purple-50 p-4 rounded-lg border border-purple-100 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div><div class="text-gray-500 text-xs">每年固定领取（名义金额）</div><div class="font-bold text-purple-700 text-lg">¥{{ fmt(insPayout) }}</div></div>
+            <div><div class="text-gray-500 text-xs">能领多久</div>
+                <div v-if="ins.depletedYear === null" class="font-bold text-green-600 text-lg">终身领取不枯竭</div>
+                <div v-else class="font-bold text-red-500 text-lg">保单第 {{ ins.depletedYear }} 年领完</div></div>
+            <div><div class="text-gray-500 text-xs">{{ p.lifeAge }} 岁时保单剩余价值（今天购买力）</div><div class="font-bold text-gray-700 text-lg">¥{{ fmt(fire.sim.insLeftReal) }}</div></div>
+        </div>
+        <p class="text-xs text-gray-400 mt-2">注意：领取金额是固定的名义数字，不会随通胀上涨。30 年后的 ¥{{ fmt(insPayout) }} 只相当于今天的 ¥{{ fmt(insPayout / Math.pow(1 + p.inflation / 100, 30)) }}。</p>
+    </div>
+
+    <!-- ⑥ 账本 -->
+    <div v-if="fire.years !== null" class="bg-white p-6 rounded-xl shadow-md border-t-4 border-indigo-500">
+        <h2 class="text-xl font-bold mb-4">📒 退休那一刻的账本（{{ fire.age }} 岁，今天的购买力）</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-6">
+            <div class="bg-gray-50 rounded p-3"><div class="text-gray-500 text-xs">累计投入本金</div><div class="font-bold">¥{{ fmt(fire.snapshot.basis) }}</div></div>
+            <div class="bg-gray-50 rounded p-3"><div class="text-gray-500 text-xs">投资账户（税前）</div><div class="font-bold text-green-600">¥{{ fmt(fire.snapshot.bal) }}</div></div>
+            <div class="bg-orange-50 rounded p-3"><div class="text-orange-700 text-xs">若一次性全卖需缴税</div><div class="font-bold text-orange-600">-¥{{ fmt(fire.snapshot.tax) }}</div></div>
+            <div class="bg-blue-50 rounded p-3"><div class="text-blue-700 text-xs">税后可用</div><div class="font-bold text-blue-600">¥{{ fmt(fire.snapshot.bal - fire.snapshot.tax) }}</div></div>
+        </div>
+        <p class="text-xs text-gray-400 mb-3">实际退休后是「边花边卖」，每次只对卖出部分里的盈利交税，所以不用一次性交完这笔税。</p>
+
+        <h3 class="font-bold text-gray-800 mb-2">逐年明细</h3>
+        <div class="overflow-x-auto max-h-80 custom-scrollbar border border-gray-200 rounded-lg">
+            <table class="w-full text-sm text-center text-gray-600 min-w-[640px]">
+                <thead class="bg-gray-100 text-gray-700 text-xs sticky top-0">
+                    <tr>
+                        <th class="py-2 px-2">年龄</th><th class="py-2 px-2">阶段</th>
+                        <th class="py-2 px-2">当年存入</th><th class="py-2 px-2">当年支出</th>
+                        <th class="py-2 px-2">保险领取</th><th class="py-2 px-2">缴税</th>
+                        <th class="py-2 px-2 text-blue-600">年底账户</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr v-for="row in fire.sim.rows.slice(1)" :key="row.age" :class="row.phase === '退休' ? 'bg-green-50/40' : ''">
+                        <td class="py-1.5 px-2 font-semibold">{{ row.age }}</td>
+                        <td class="py-1.5 px-2">{{ row.phase }}</td>
+                        <td class="py-1.5 px-2">{{ row.contribReal ? '¥' + fmt(row.contribReal) : '-' }}</td>
+                        <td class="py-1.5 px-2">{{ row.spendReal ? '¥' + fmt(row.spendReal) : '-' }}</td>
+                        <td class="py-1.5 px-2 text-purple-600">{{ row.insReal ? '¥' + fmt(row.insReal) : '-' }}</td>
+                        <td class="py-1.5 px-2 text-orange-600">{{ row.taxReal ? '¥' + fmt(row.taxReal) : '-' }}</td>
+                        <td class="py-1.5 px-2 font-bold text-blue-600">¥{{ fmt(row.balReal) }}</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-indigo-500">
-        <h2 class="text-xl font-bold mb-4">🏖️ 退休后资金能花多少年 (含通胀及税务对冲)</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div class="bg-gray-50 p-4 rounded border border-gray-100">
-                <label class="block font-semibold mb-2 text-gray-700">1) 退休后预估年化</label>
-                <div class="flex items-center space-x-2 mb-3">
-                    <input type="range" min="0" max="15" step="0.5" v-model.number="postRetire.returnRate" class="flex-1" style="accent-color: #6366f1;">
-                    <div class="flex items-center border border-indigo-300 rounded bg-white px-1 py-1 shadow-sm w-16">
-                        <input type="number" v-model.number="postRetire.returnRate" step="0.5" class="w-full text-center font-bold text-indigo-600 outline-none bg-transparent">
-                    </div>
-                    <span class="text-gray-500">%</span>
-                </div>
-                <p class="text-xs text-slate-500 leading-relaxed">
-                    退休后投资求稳，建议此处设定略低于定投期的名义收益率。
-                </p>
-            </div>
-            
-            <div class="bg-gray-50 p-4 rounded border border-gray-100">
-                <label class="block font-semibold mb-2 text-gray-700">2) 每年资金提取率</label>
-                <div class="flex items-center space-x-2 mb-3">
-                    <input type="range" min="0" max="15" step="0.5" v-model.number="postRetire.withdrawalRate" class="flex-1" style="accent-color: #ec4899;">
-                    <div class="flex items-center border border-pink-300 rounded bg-white px-1 py-1 shadow-sm w-16">
-                        <input type="number" v-model.number="postRetire.withdrawalRate" step="0.5" class="w-full text-center font-bold text-pink-600 outline-none bg-transparent">
-                    </div>
-                    <span class="text-gray-500">%</span>
-                </div>
-                <p class="text-xs text-slate-500 leading-relaxed">
-                    每年从总资金中花掉的比例。底层算法已自动引入 <b>20% 的固定资本利得税</b> 消耗机制。
-                </p>
-            </div>
-        </div>
-        
-        <div class="bg-indigo-50 p-6 rounded-lg text-center border border-indigo-100">
-            <h3 class="font-bold text-indigo-800 mb-3 text-lg">基于上述参数，你的资金按购买力能撑多久？</h3>
-            <div v-if="yearsToDeplete === '永不枯竭'" class="text-3xl font-extrabold text-indigo-600">永不枯竭 🌟</div>
-            <div v-else class="text-3xl font-extrabold text-pink-600">可支撑 {{ yearsToDeplete }} 年</div>
-            <p class="text-sm text-indigo-400 mt-2">计算已自动扣除 20% 利润税成本，并纳入保险派发的免税现金流对冲</p>
-        </div>
+    <div class="text-center text-gray-400 text-xs mt-8 leading-relaxed">
+        数据自动保存在本机浏览器。<br>
+        本工具按「每年固定收益率」推演，真实市场有涨有跌，退休头几年遇到大跌的风险（顺序风险）这里没有体现，结果仅供参考。
     </div>
-    
-    <div class="text-center text-gray-400 text-sm mt-8 pb-8">数据已实时保存在本地浏览器缓存中</div>
 </div>
 
 <script>
-    const { createApp } = Vue
+// ===== 精算底层表（保单演示：50 万保费对应的现金价值）=====
+const HK_TABLE = {
+    1:0, 2:42475, 3:91578, 4:165895, 5:327445, 6:503390, 7:570165, 8:599135, 9:651165, 10:727210,
+    11:763358, 12:802673, 13:846488, 14:909558, 15:1034528, 16:1097370, 17:1159878, 18:1235130, 19:1307853, 20:1510133,
+    30:3102185, 40:6018590, 50:11297720, 60:21207375, 70:39809160, 80:74727263, 90:140273350, 100:263312358
+};
+const HK_BASE = 500000;
+function hkMultiplier(year) {
+    if (year <= 0) return 0;
+    if (HK_TABLE[year] !== undefined) return HK_TABLE[year] / HK_BASE;
+    if (year > 100) return (HK_TABLE[100] / HK_BASE) * Math.pow(1.065, year - 100);
+    const prevY = Math.floor(year / 10) * 10, nextY = prevY + 10;
+    const rate = Math.pow(HK_TABLE[nextY] / HK_TABLE[prevY], 1 / (nextY - prevY)) - 1;
+    return (HK_TABLE[prevY] * Math.pow(1 + rate, year - prevY)) / HK_BASE;
+}
 
-    createApp({
+// 保单每一年的领取额（名义）与剩余现金价值（名义）
+function insuranceSchedule(ins, years) {
+    const payout = ins.principal * ins.payoutPct / 100;
+    const pay = [0], cv = [0];
+    let value = 0, depletedYear = null;
+    for (let y = 1; y <= years; y++) {
+        if (y < ins.startYear || payout <= 0) {
+            value = ins.principal * hkMultiplier(y);
+            pay.push(0);
+        } else {
+            const prevM = hkMultiplier(y - 1), currM = hkMultiplier(y);
+            if (y === ins.startYear || prevM <= 0) value = ins.principal * currM;
+            else value *= currM / prevM;
+            const p = Math.min(payout, Math.max(value, 0));
+            value -= p;
+            pay.push(p);
+            if (value <= 0 && depletedYear === null) depletedYear = y;
+        }
+        cv.push(Math.max(value, 0));
+    }
+    return { pay, cv, payout, depletedYear };
+}
+
+// ===== 核心引擎：一条时间线，名义金额推演，输出时折回今天的购买力 =====
+// retireAt = 再工作几年后退休（0 = 立刻退休）
+function simulateLife(p, retireAt, insSched) {
+    const H = p.lifeAge - p.currentAge;
+    const i = p.inflation / 100, tax = p.taxPct / 100;
+    const accM = Math.pow(1 + p.accReturn / 100, 1 / 12) - 1;
+    const postR = p.postReturn / 100;
+    let bal = p.currentAssets, basis = p.currentAssets, ok = true, failAge = null;
+    const rows = [{ age: p.currentAge, phase: '现在', balReal: bal, contribReal: 0, spendReal: 0, insReal: 0, taxReal: 0 }];
+
+    for (let t = 1; t <= H; t++) {
+        const f = Math.pow(1 + i, t);              // 年底的通胀累计系数
+        const priceLvl = Math.pow(1 + i, t - 1);   // 年初的物价水平
+        const insPay = insSched.pay[t] || 0;
+        let contrib = 0, spend = 0, taxPaid = 0;
+
+        if (t <= retireAt) {
+            for (let m = 0; m < 12; m++) {
+                const c = p.monthly * priceLvl;
+                bal = bal * (1 + accM) + c;
+                basis += c; contrib += c;
+            }
+            bal += insPay; basis += insPay;          // 工作期领到的保险钱直接再投资
+        } else {
+            spend = p.annualExpense * priceLvl;
+            const need = spend - insPay;
+            if (need <= 0) { bal += -need; basis += -need; }
+            else if (ok) {
+                const gainRatio = bal > basis ? (bal - basis) / bal : 0;
+                const gross = need / (1 - tax * gainRatio);
+                if (gross > bal + 1e-6) { ok = false; failAge = p.currentAge + t; bal = 0; basis = 0; }
+                else { bal -= gross; basis -= gross * (1 - gainRatio); taxPaid = gross - need; }
+            }
+            bal *= 1 + postR;
+        }
+        rows.push({
+            age: p.currentAge + t,
+            phase: t <= retireAt ? '工作' : (ok ? '退休' : '钱花完了'),
+            balReal: bal / f, contribReal: contrib / f, spendReal: spend / f,
+            insReal: insPay / f, taxReal: taxPaid / f,
+            balNom: bal, basisNom: basis
+        });
+    }
+    const last = rows[rows.length - 1];
+    return { ok, failAge, rows, endReal: last.balReal, insLeftReal: (insSched.cv[H] || 0) / Math.pow(1 + i, H) };
+}
+
+// 找到最早「从这年退休，钱能撑到 lifeAge」的年份
+function findFire(p) {
+    const H = Math.max(0, p.lifeAge - p.currentAge);
+    const sched = insuranceSchedule(p.ins, H);
+    for (let r = 0; r <= H; r++) {
+        const sim = simulateLife(p, r, sched);
+        if (sim.ok) return { years: r, age: p.currentAge + r, sim, sched };
+    }
+    return { years: null, age: null, sim: simulateLife(p, H, sched), sched };
+}
+
+const DEFAULTS = () => ({
+    currentAge: 30, lifeAge: 90, currentAssets: 100000,
+    inflation: 3.0, taxPct: 20,
+    expenses: {
+        housing: { name: '🏠 住房固定', annual: 24000 },
+        food: { name: '🍔 餐饮生鲜', annual: 18000 },
+        daily: { name: '🛒 日常消耗', annual: 6000 },
+        medical: { name: '💊 医保看病', annual: 2000 },
+        transport: { name: '🚌 交通快递', annual: 3000 },
+        fun: { name: '🎮 娱乐交际', annual: 5000 },
+    },
+    monthly: 5400, postReturn: 4.0,
+    portfolio: [
+        { name: '标普500 (美股大盘)', rate: 10.0, weight: 18.5 },
+        { name: '纳指100 (美股科技)', rate: 15.0, weight: 37 },
+        { name: '纯债基金 (稳健打底)', rate: 4.0, weight: 44.5 }
+    ],
+    ins: { principal: 500000, startYear: 10, payoutPct: 10 }
+});
+const STORAGE_KEY = 'fireCalculatorDataV10';
+
+function loadSaved() {
+    const d = DEFAULTS();
+    try {
+        const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+        if (s && typeof s === 'object') {
+            for (const k of Object.keys(d)) if (s[k] !== undefined) d[k] = (typeof d[k] === 'object' && !Array.isArray(d[k])) ? Object.assign(d[k], s[k]) : s[k];
+        }
+    } catch (e) { console.error('加载本地数据失败', e); }
+    return d;
+}
+
+if (typeof window !== 'undefined' && window.Vue) {
+    Vue.createApp({
         data() {
             return {
-                expenses: {
-                    housing: { name: '🏠 住房固定', monthly: 2000, annual: 24000 },
-                    food: { name: '🍔 餐饮生鲜', monthly: 1500, annual: 18000 },
-                    daily: { name: '🛒 日常消耗', monthly: 500, annual: 6000 },
-                    medical: { name: '💊 医保看病', monthly: 166, annual: 2000 },
-                    transport: { name: '🚌 交通快递', monthly: 250, annual: 3000 },
-                    girlfriend: { name: '🎮 娱乐交际', monthly: 416, annual: 5000 },
-                },
-                inflation: 3.0,
-                stockMonthly: 5400,
-                stockAnnual: 64800,
-                investYears: 15,
-                taxRate: 0.20,
-                availableETFs: [
+                p: loadSaved(),
+                presetETFs: [
                     { name: '沪深300 (A股大盘)', rate: 8.0 },
                     { name: '中证500 (A股中小盘)', rate: 9.0 },
                     { name: '标普500 (美股大盘)', rate: 10.0 },
                     { name: '纳指100 (美股科技)', rate: 15.0 },
                     { name: '纯债基金 (稳健打底)', rate: 4.0 }
                 ],
-                etfPortfolio: [
-                    { name: '标普500 (美股大盘)', rate: 10.0, weight: 18.5, amount: 1000 },
-                    { name: '纳指100 (美股科技)', rate: 15.0, weight: 37, amount: 2000 },
-                    { name: '纯债基金 (稳健打底)', rate: 4.0, weight: 44.5, amount: 2400 }
-                ],
-                hkInsurance: { principal: 500000, startYear: 10 },
-                postRetire: { returnRate: 4.0, withdrawalRate: 4.0 }
-            }
+                hoverIdx: null
+            };
         },
         computed: {
-            totalAnnualExpense() { return Object.values(this.expenses).reduce((sum, item) => sum + (Number(item.annual) || 0), 0); },
-            totalMonthlyExpense() { return Math.round(this.totalAnnualExpense / 12); },
-            fireTarget() { return this.totalAnnualExpense * 25; },
-            totalEtfWeight() { return Number(this.etfPortfolio.reduce((sum, etf) => sum + (Number(etf.weight) || 0), 0).toFixed(1)); },
-            totalEtfAmount() { return this.etfPortfolio.reduce((sum, etf) => sum + (Number(etf.amount) || 0), 0); },
-            combinedEtfRate() {
-                const totalAmount = this.totalEtfAmount;
-                if (totalAmount === 0) return 0;
-                return this.etfPortfolio.reduce((sum, etf) => sum + (etf.rate * (etf.amount / totalAmount)), 0);
+            annualExpense() { return Object.values(this.p.expenses).reduce((s, e) => s + (Number(e.annual) || 0), 0); },
+            totalWeight() { return this.p.portfolio.reduce((s, e) => s + (Number(e.weight) || 0), 0); },
+            weightOk() { return Math.abs(this.totalWeight - 100) < 0.05; },
+            // 仓位不满 100% 时按比例折算，结果不会因为四舍五入就「消失」
+            portfolioRate() {
+                const w = this.totalWeight;
+                if (w <= 0) return 0;
+                return this.p.portfolio.reduce((s, e) => s + (Number(e.rate) || 0) * (Number(e.weight) || 0) / w, 0);
             },
-            hkPayoutAmount() { return this.hkInsurance.principal * (this.hkInsurance.startYear / 100); },
-
-            // 新增：统筹推演多少年能撞线 FIRE 目标
-            combinedYearsToFire() {
-                if (this.stockMonthly <= 0 || this.totalEtfAmount !== this.stockMonthly) return 0;
-                
-                let etfBalance = 0;
-                let cumPrincipal = 0;
-                let target = this.fireTarget;
-                
-                // ETF 使用真实复利（剔除通胀），以对齐当前购买力的目标金额
-                let realAnnualRate = Math.max((this.combinedEtfRate - this.inflation) / 100, 0.001);
-                let monthlyRate = Math.pow(1 + realAnnualRate, 1/12) - 1;
-
-                for (let y = 1; y <= 100; y++) {
-                    // ETF 滚动1年
-                    for (let m = 0; m < 12; m++) {
-                        etfBalance = etfBalance * (1 + monthlyRate) + this.stockMonthly;
-                        cumPrincipal += this.stockMonthly;
-                    }
-                    
-                    // 计算 ETF 扣减20%利润税后的真实购买力
-                    let etfProfit = Math.max(0, etfBalance - cumPrincipal);
-                    let etfTax = etfProfit * this.taxRate;
-                    let postTaxEtf = etfBalance - etfTax;
-                    
-                    // 获取香港保险名义现金价值，并折算通胀贬值后的真实购买力
-                    let nominalCV = this.hkInsurance.principal * this.getHkMultiplier(y);
-                    let realCV = nominalCV / Math.pow(1 + (this.inflation/100), y);
-                    
-                    // 撞线检测
-                    if ((postTaxEtf + realCV) >= target) {
-                        return y;
-                    }
-                }
-                return ">100";
-            },
-
-            // 新增：提取撞线当年的资产快照明细
-            combinedFireDetails() {
-                let y = this.combinedYearsToFire;
-                if (y === '>100' || y === 0) return { etf: 0, ins: 0, total: 0 };
-                
-                let etfBalance = 0;
-                let cumPrincipal = 0;
-                let realAnnualRate = Math.max((this.combinedEtfRate - this.inflation) / 100, 0.001);
-                let monthlyRate = Math.pow(1 + realAnnualRate, 1/12) - 1;
-
-                for (let i = 0; i < y * 12; i++) {
-                    etfBalance = etfBalance * (1 + monthlyRate) + this.stockMonthly;
-                    cumPrincipal += this.stockMonthly;
-                }
-                
-                let etfProfit = Math.max(0, etfBalance - cumPrincipal);
-                let etfTax = etfProfit * this.taxRate;
-                let postTaxEtf = etfBalance - etfTax;
-                
-                let nominalCV = this.hkInsurance.principal * this.getHkMultiplier(y);
-                let realCV = nominalCV / Math.pow(1 + (this.inflation/100), y);
-                
+            params() {
+                const p = this.p;
                 return {
-                    etf: postTaxEtf,
-                    ins: realCV,
-                    total: postTaxEtf + realCV
+                    currentAge: num(p.currentAge), lifeAge: Math.max(num(p.lifeAge), num(p.currentAge)),
+                    currentAssets: num(p.currentAssets), inflation: num(p.inflation), taxPct: num(p.taxPct),
+                    annualExpense: this.annualExpense, monthly: num(p.monthly),
+                    accReturn: this.portfolioRate, postReturn: num(p.postReturn),
+                    ins: { principal: num(p.ins.principal), startYear: Math.max(2, num(p.ins.startYear)), payoutPct: num(p.ins.payoutPct) }
                 };
             },
-
-            investmentTableData() {
-                let data = [];
-                let balance = 0;
-                let cumPrincipal = 0;
-                let monthlyRate = (this.combinedEtfRate / 100) / 12;
-
-                for (let y = 1; y <= this.investYears; y++) {
-                    let startBalance = balance;
-                    let yearlyContribution = 0;
-                    let yearlyProfit = 0;
-
-                    for (let m = 0; m < 12; m++) {
-                        let monthProfit = balance * monthlyRate;
-                        yearlyProfit += monthProfit;
-                        balance += monthProfit + this.stockMonthly;
-                        yearlyContribution += this.stockMonthly;
-                    }
-                    cumPrincipal += yearlyContribution;
-
-                    data.push({
-                        year: y,
-                        contribution: yearlyContribution,
-                        cumPrincipal: cumPrincipal,
-                        investedAmount: startBalance + yearlyContribution, 
-                        profit: yearlyProfit,
-                        endBalance: balance
-                    });
+            fire() {
+                const r = findFire(this.params);
+                let snapshot = { bal: 0, basis: 0, tax: 0 };
+                if (r.years !== null) {
+                    const row = r.sim.rows[r.years];
+                    const f = Math.pow(1 + this.params.inflation / 100, r.years);
+                    const bal = row.balNom !== undefined ? row.balNom : this.params.currentAssets;
+                    const basis = row.basisNom !== undefined ? row.basisNom : this.params.currentAssets;
+                    snapshot = { bal: bal / f, basis: basis / f, tax: Math.max(0, bal - basis) * this.params.taxPct / 100 / f };
                 }
-                return data;
+                return { ...r, snapshot };
             },
-
-            investmentSummary() {
-                if (this.investYears === 0 || this.stockMonthly === 0) return { cumPrincipal:0, preTaxTotal:0, preTaxProfit:0, taxAmount:0, postTaxTotal:0, postTaxProfit:0, effRate:0 };
-                
-                let lastRow = this.investmentTableData[this.investYears - 1];
-                let preTaxTotal = lastRow.endBalance;
-                let cumPrincipal = lastRow.cumPrincipal;
-                
-                let preTaxProfit = Math.max(0, preTaxTotal - cumPrincipal);
-                let taxAmount = preTaxProfit * this.taxRate;
-                let postTaxTotal = preTaxTotal - taxAmount;
-                let postTaxProfit = postTaxTotal - cumPrincipal;
-
-                let low = 0, high = 1.0, effRate = 0;
-                for(let i = 0; i < 40; i++) {
-                    let mid = (low + high) / 2;
-                    let mRate = mid / 12;
-                    let fv = 0;
-                    for(let m = 0; m < this.investYears * 12; m++) {
-                        fv = fv * (1 + mRate) + this.stockMonthly;
-                    }
-                    if(fv > postTaxTotal) high = mid;
-                    else low = mid;
-                }
-                effRate = ((low + high) / 2) * 100;
-
-                return { cumPrincipal, preTaxTotal, preTaxProfit, taxAmount, postTaxTotal, postTaxProfit, effRate };
+            sensitivity() {
+                const base = this.params;
+                return {
+                    lowReturn: findFire({ ...base, accReturn: base.accReturn - 2, postReturn: base.postReturn - 2 }).years,
+                    moreSaving: findFire({ ...base, monthly: base.monthly + 1000 }).years,
+                    lessSpending: findFire({ ...base, annualExpense: Math.max(0, base.annualExpense - 6000) }).years
+                };
             },
-
-            hkSimResults() {
-                let currentCV = 0, isInfinite = true, zeroYear = -1, cvAt80 = 0;
-                for (let y = 1; y <= 100; y++) {
-                    let prevM = this.getHkMultiplier(y - 1);
-                    let currM = this.getHkMultiplier(y);
-
-                    if (y < this.hkInsurance.startYear) {
-                        currentCV = this.hkInsurance.principal * currM;
-                    } else {
-                        let growthRate = prevM > 0 ? (currM / prevM - 1) : 0;
-                        currentCV = currentCV * (1 + growthRate) - this.hkPayoutAmount;
-                        if (currentCV <= 0 && zeroYear === -1) { zeroYear = (y - this.hkInsurance.startYear + 1); isInfinite = false; currentCV = 0; }
-                    }
-                    if (y === 80) cvAt80 = currentCV > 0 ? currentCV : 0;
-                }
-                return { isInfinite: isInfinite, yearsToZero: zeroYear, cvAt80: cvAt80 };
+            insPayout() { return this.params.ins.principal * this.params.ins.payoutPct / 100; },
+            ins() { return insuranceSchedule(this.params.ins, 120); },
+            chart() {
+                const W = 720, H = 240, L = 56, R = 12, T = 12, B = 24;
+                const rows = this.fire.sim.rows;
+                const n = Math.max(rows.length - 1, 1);
+                const maxV = Math.max(...rows.map(r => r.balReal), 1);
+                const step = niceStep(maxV / 4);
+                const top = Math.ceil(maxV / step) * step;
+                const x = i => L + (W - L - R) * i / n;
+                const y = v => H - B - (H - T - B) * v / top;
+                const pts = rows.map((r, i) => `${x(i).toFixed(1)},${y(r.balReal).toFixed(1)}`);
+                const yTicks = [];
+                for (let v = 0; v <= top + 1e-6; v += step) yTicks.push({ v, y: y(v), label: wan(v) });
+                const xTicks = [];
+                const a0 = rows[0].age, a1 = rows[rows.length - 1].age;
+                for (let a = Math.ceil(a0 / 10) * 10; a <= a1; a += 10) xTicks.push({ age: a, x: x(a - a0) });
+                return {
+                    W, H, L, R, T, B, x, y,
+                    line: 'M' + pts.join('L'),
+                    area: `M${x(0)},${y(0)}L` + pts.join('L') + `L${x(n)},${y(0)}Z`,
+                    yTicks, xTicks,
+                    fireX: this.fire.years !== null && this.fire.years > 0 ? x(this.fire.years) : null
+                };
             },
-
-            yearsToDeplete() {
-                let balance = this.fireTarget; 
-                let snapshot = this.investmentSummary;
-                let costBasis = snapshot.preTaxTotal > 0 ? balance * (snapshot.cumPrincipal / snapshot.preTaxTotal) : balance; 
-                
-                let years = 0;
-                let netWithdrawal = balance * (this.postRetire.withdrawalRate / 100);
-                let realReturnRate = (this.postRetire.returnRate - this.inflation) / 100;
-                let simResults = this.hkSimResults;
-
-                while (balance > 0 && years < 100) {
-                    years++;
-                    let insuranceIncome = 0;
-                    if (years >= this.hkInsurance.startYear) {
-                        if (simResults.isInfinite || (years - this.hkInsurance.startYear < simResults.yearsToZero)) {
-                            insuranceIncome = this.hkPayoutAmount;
-                        }
-                    }
-                    
-                    let neededFromPoolNet = netWithdrawal - insuranceIncome;
-                    
-                    if (neededFromPoolNet > 0) {
-                        let profitRatio = balance > costBasis ? (balance - costBasis) / balance : 0;
-                        let grossWithdrawal = neededFromPoolNet / (1 - this.taxRate * profitRatio);
-                        
-                        if (balance < grossWithdrawal) {
-                            balance = 0; break; 
-                        }
-                        
-                        balance -= grossWithdrawal;
-                        costBasis -= grossWithdrawal * (1 - profitRatio); 
-                    }
-                    
-                    balance = balance * (1 + realReturnRate);
-                    netWithdrawal = netWithdrawal * (1 + (this.inflation / 100));
-                }
-                return years >= 100 ? '永不枯竭' : years;
+            hoverPoint() {
+                if (this.hoverIdx === null) return null;
+                const row = this.fire.sim.rows[this.hoverIdx];
+                if (!row) return null;
+                const c = this.chart, px = c.x(this.hoverIdx);
+                return { row, x: px, y: c.y(row.balReal), pct: px / c.W * 100 };
             }
         },
         methods: {
-            // 将精算底层表剥离为公用函数
-            getHkMultiplier(year) {
-                const rawData = {
-                    1:0, 2:42475, 3:91578, 4:165895, 5:327445, 6:503390, 7:570165, 8:599135, 9:651165, 10:727210,
-                    11:763358, 12:802673, 13:846488, 14:909558, 15:1034528, 16:1097370, 17:1159878, 18:1235130, 19:1307853, 20:1510133,
-                    30:3102185, 40:6018590, 50:11297720, 60:21207375, 70:39809160, 80:74727263, 90:140273350, 100:263312358
-                };
-                if (year <= 0) return 0;
-                if (rawData[year] !== undefined) return rawData[year] / 500000;
-                let prevY = Math.floor(year/10)*10;
-                let nextY = prevY + 10;
-                if (prevY >= 100) return (rawData[100] / 500000) * Math.pow(1.065, year - 100); 
-                let rate = Math.pow(rawData[nextY] / rawData[prevY], 1 / (nextY - prevY)) - 1;
-                return (rawData[prevY] * Math.pow(1 + rate, year - prevY)) / 500000;
+            fmt(n) { return Math.round(n || 0).toLocaleString(); },
+            num,
+            leverText(years) {
+                const base = this.fire.years;
+                if (years === null) return '到时也退不了休';
+                const d = years - base;
+                if (d === 0) return `还是 ${this.p.currentAge + years} 岁`;
+                return `${this.p.currentAge + years} 岁（${d > 0 ? '推迟' : '提前'} ${Math.abs(d)} 年）`;
             },
-            updateExpenseFromMonthly(key) { this.expenses[key].annual = (Number(this.expenses[key].monthly) || 0) * 12; },
-            updateExpenseFromAnnual(key) { this.expenses[key].monthly = Math.round((Number(this.expenses[key].annual) || 0) / 12); },
-            updateStockAnnual() { this.stockAnnual = (Number(this.stockMonthly) || 0) * 12; this.recalculateAllEtfAmounts(); },
-            updateStockMonthly() { this.stockMonthly = Math.round((Number(this.stockAnnual) || 0) / 12); this.recalculateAllEtfAmounts(); },
-            updateEtfAmount(index) {
-                if (this.stockMonthly <= 0) return;
-                let etf = this.etfPortfolio[index];
-                etf.amount = Math.round((etf.weight / 100) * this.stockMonthly);
+            onEtfChange(etf) {
+                const m = this.presetETFs.find(e => e.name === etf.name);
+                if (m) etf.rate = m.rate;
             },
-            updateEtfWeight(index) {
-                if (this.stockMonthly <= 0) return;
-                let etf = this.etfPortfolio[index];
-                etf.weight = Number(((etf.amount / this.stockMonthly) * 100).toFixed(1)); 
+            normalizeWeights() {
+                const w = this.totalWeight;
+                if (w <= 0) return;
+                this.p.portfolio.forEach(e => { e.weight = Number(((Number(e.weight) || 0) / w * 100).toFixed(1)); });
+                const diff = Number((100 - this.totalWeight).toFixed(1));
+                if (diff !== 0 && this.p.portfolio.length) this.p.portfolio[0].weight = Number((this.p.portfolio[0].weight + diff).toFixed(1));
             },
-            recalculateAllEtfAmounts() { this.etfPortfolio.forEach((_, index) => { this.updateEtfAmount(index); }); },
-            onEtfChange(index) {
-                let matchedEtf = this.availableETFs.find(e => e.name === this.etfPortfolio[index].name);
-                if (matchedEtf) this.etfPortfolio[index].rate = matchedEtf.rate;
-            },
-            addEtf() { this.etfPortfolio.push({ name: '标普500 (美股大盘)', rate: 10.0, weight: 0, amount: 0 }); },
-            removeEtf(index) { this.etfPortfolio.splice(index, 1); }
+            resetAll() { if (confirm('确定恢复所有默认参数？')) this.p = DEFAULTS(); },
+            onChartMove(ev) {
+                const svg = ev.currentTarget, rect = svg.getBoundingClientRect();
+                const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+                const vx = (clientX - rect.left) / rect.width * this.chart.W;
+                const n = this.fire.sim.rows.length - 1;
+                const i = Math.round((vx - this.chart.L) / (this.chart.W - this.chart.L - this.chart.R) * n);
+                this.hoverIdx = Math.min(Math.max(i, 0), n);
+            }
         },
         watch: {
-            $data: {
-                handler(val) { localStorage.setItem('fireCalculatorDataV9', JSON.stringify(val)); },
-                deep: true
-            }
-        },
-        mounted() {
-            const savedData = localStorage.getItem('fireCalculatorDataV9');
-            if (savedData) {
-                try { Object.assign(this.$data, JSON.parse(savedData)); } 
-                catch (e) { console.error('加载本地数据失败', e); }
-            } else {
-                Object.keys(this.expenses).forEach(key => this.updateExpenseFromAnnual(key));
-                this.recalculateAllEtfAmounts();
-            }
+            p: { handler(val) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(val)); } catch (e) {} }, deep: true }
         }
-    }).mount('#app')
+    }).mount('#app');
+}
+
+function num(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+function niceStep(raw) {
+    if (raw <= 0) return 1;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const r = raw / mag;
+    return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 5 ? 5 : 10) * mag;
+}
+function wan(v) { return v >= 1e8 ? (v / 1e8).toFixed(1) + '亿' : v >= 1e4 ? Math.round(v / 1e4) + '万' : Math.round(v).toString(); }
 </script>
 
 </body>
