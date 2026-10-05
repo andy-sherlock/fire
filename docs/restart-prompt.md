@@ -22,7 +22,7 @@
 2. 从第 14 节"待决定 / 待确认 / 待验证"开始，一条一条和我拍板。每次只推进一两条，不要一次全抛给我。
 3. 6.3 节有一个未解决的问题：股票、基金价格怎样稳定、合规地写进"小黑板"（服务器每天抄一次收盘价、给所有用户共用的价格文件）。这个问题要单独讨论。
 4. 我说"调用三个 skill"时，用乔布斯、马斯克、巴菲特三个视角分别分析，最后跳出角色给综合建议。
-   如果本地没装，请从这三个仓库安装到 ~/.claude/skills/：
+   这三个 skill 已放在项目的 .claude/skills/ 里，会自动加载。如果没有加载，再从这三个仓库安装：
    - https://github.com/alchaincyf/steve-jobs-skill
    - https://github.com/alchaincyf/elon-musk-skill
    - https://github.com/will2025btc/buffett-perspective
