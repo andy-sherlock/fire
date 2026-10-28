@@ -22,7 +22,7 @@ FIRE 在这里指：攒够目标金额，就可以提前辞职去做想做的事
 | --- | --- | --- |
 | `main`（v9，线上版） | 在用 | 7 个已用数字验证的计算错误：退休期通胀扣两次、保险重复计算、保单年度错位、退休从 25 倍目标而非实际积累起算、两处复利口径不一致、仓位四舍五入导致结果消失、addEtf 无按钮 |
 | 分支 `claude/sweet-heisenberg-d7pk0z`（v10） | **不合并**（用户要求） | 修正了上述 7 个错误；遗留：结论零余量、开局显示默认数据的结论、必填年龄和规划寿命、本地存档未迁移、保单剩余价值不计 |
-| 分支 `claude/charming-carson-mti7wg` | 本文档所在分支 | 只有文档 |
+| 分支 `fire-v2` | 本文档所在分支 | 只有文档 |
 
 预览：旧版 https://andy-sherlock.github.io/fire/ ；v10 https://raw.githack.com/andy-sherlock/fire/claude/sweet-heisenberg-d7pk0z/index.html
 
@@ -306,7 +306,7 @@ v10 的计算引擎（`hkMultiplier`、`insuranceSchedule`、`simulateLife`、`f
 
 **代码和分支**
 
-- 新代码写在分支 `claude/charming-carson-mti7wg`（和方案文档在一起）的 `app/` 文件夹里
+- 新代码写在分支 `fire-v2`（和方案文档在一起）的 `app/` 文件夹里
 - 做到能用后，这个分支合并进主线 main，新工具取代旧计算器；合并前给旧计算器打标记（如 `v9-旧版`），以后可从 Git 历史中找回
 - 分支 `claude/sweet-heisenberg-d7pk0z`（v10）不合并；其中的计算公式供参考，新工具完成后删除（删除前先问用户）
 - 第 1 期仍是**静态网站**：计算在浏览器里完成，数据在用户电脑上，不需要服务器
