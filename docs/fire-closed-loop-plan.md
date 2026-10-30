@@ -21,12 +21,12 @@ FIRE 在这里指：攒够目标金额，就可以提前辞职去做想做的事
 | 版本 | 状态 | 说明 |
 | --- | --- | --- |
 | `main`（v9，线上版） | 在用 | 7 个已用数字验证的计算错误：退休期通胀扣两次、保险重复计算、保单年度错位、退休从 25 倍目标而非实际积累起算、两处复利口径不一致、仓位四舍五入导致结果消失、addEtf 无按钮 |
-| 分支 `claude/sweet-heisenberg-d7pk0z`（v10） | **不合并**（用户要求） | 修正了上述 7 个错误；遗留：结论零余量、开局显示默认数据的结论、必填年龄和规划寿命、本地存档未迁移、保单剩余价值不计 |
-| 分支 `fire-v2` | 本文档所在分支 | 只有文档 |
+| 分支 `claude/sweet-heisenberg-d7pk0z`（v10） | **已删除**（2026-10-28，用户在 GitHub 上删除，未合并） | 修正了上述 7 个错误；遗留：结论零余量、开局显示默认数据的结论、必填年龄和规划寿命、本地存档未迁移、保单剩余价值不计 |
+| 分支 `fire-v2` | 本文档所在分支 | 方案文档和界面 Demo（`docs/demo/`），还没有代码 |
 
-预览：旧版 https://andy-sherlock.github.io/fire/ ；v10 https://raw.githack.com/andy-sherlock/fire/claude/sweet-heisenberg-d7pk0z/index.html
+预览：旧版 https://andy-sherlock.github.io/fire/ （v10 分支已删除，预览链接失效）
 
-v10 的计算引擎（`hkMultiplier`、`insuranceSchedule`、`simulateLife`、`findFire`）可以脱离界面单独运行，新项目可参考。
+v10 的计算引擎（`hkMultiplier`、`insuranceSchedule`、`simulateLife`、`findFire`）曾可脱离界面单独运行；分支删除后，新项目按 `engine-spec.md` 重新写。
 
 ---
 
@@ -308,7 +308,7 @@ v10 的计算引擎（`hkMultiplier`、`insuranceSchedule`、`simulateLife`、`f
 
 - 新代码写在分支 `fire-v2`（和方案文档在一起）的 `app/` 文件夹里
 - 做到能用后，这个分支合并进主线 main，新工具取代旧计算器；合并前给旧计算器打标记（如 `v9-旧版`），以后可从 Git 历史中找回
-- 分支 `claude/sweet-heisenberg-d7pk0z`（v10）不合并；其中的计算公式供参考，新工具完成后删除（删除前先问用户）
+- 分支 `claude/sweet-heisenberg-d7pk0z`（v10）不合并，已于 2026-10-28 删除
 - 第 1 期仍是**静态网站**：计算在浏览器里完成，数据在用户电脑上，不需要服务器
 - 继续用 GitHub 的免费地址 `andy-sherlock.github.io/fire/`，不买域名；仓库保持公开，规矩：**真实数据和密钥永远不进仓库**，仓库里只放编造的示例数据
 
@@ -626,7 +626,7 @@ v10 的计算引擎（`hkMultiplier`、`insuranceSchedule`、`simulateLife`、`f
 - [ ] 家庭版（夫妻一起 FIRE）做不做、怎么定价：配偶消费可能超过主账户，会被"主大于辅"挡住
 - [ ] 注销账号时删除全部数据（第 10 节）
 - [ ] 留存：用"本月为什么变了"的归因和倒计时给用户反馈，导入路线不要求天天记账（原则已讨论，具体做法待定）
-- [x] 旧分支 v10：不合并，新工具完成后删除（7.2.1）
+- [x] 旧分支 v10：不合并，已删除（2026-10-28）
 - [ ] 路线：给 financial-management 贡献闭环引擎，还是自己做（已决定先自己做第 1 期自用版，见 7.2；是否做商业 App 6 个月后再定）
 - [ ] 安卓国内渠道怎么上架和收费
 - [ ] 换汇成本（人民币换美元时的汇率差价）要不要计入持仓成本；第 1 期不处理（2026-10-30 提出）
