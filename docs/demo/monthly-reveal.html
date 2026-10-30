@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FIRE 月度揭晓预览</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;900&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* 布局：左边一部"手机"演示工具画面，右边是时间线和说明；窄屏上下排 */
+:root {
+  --bg: #eef1ee;
+  --surface: #ffffff;
+  --ink: #17221e;
+  --muted: #5d6b65;
+  --line: #d5ddd8;
+  --accent: #0f6b5c;
+  --accent-soft: #dcefe9;
+  --closer: #0f6b5c;
+  --farther: #a8661a;
+  --farther-soft: #f6ead9;
+  --phone: #1d2925;
+  --f-display: "Noto Serif SC", "Songti SC", serif;
+  --f-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111816; --surface: #19221f; --ink: #e6ece9; --muted: #9aa8a2; --line: #2c3833;
+    --accent: #5cc4ae; --accent-soft: #1d3a33; --closer: #5cc4ae; --farther: #e0a75c; --farther-soft: #3a2e1f;
+    --phone: #050807; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111816; --surface: #19221f; --ink: #e6ece9; --muted: #9aa8a2; --line: #2c3833;
+  --accent: #5cc4ae; --accent-soft: #1d3a33; --closer: #5cc4ae; --farther: #e0a75c; --farther-soft: #3a2e1f;
+  --phone: #050807; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); line-height: 1.6; }
+.wrap {
+  max-width: 1080px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+header h1 { font-family: var(--f-display); font-weight: 900; font-size: 1.9rem; margin: 0; text-wrap: balance; }
+header p { color: var(--muted); margin: 6px 0 0; max-width: 62ch; }
+.tag { display: inline-block; font-size: .75rem; letter-spacing: .08em; color: var(--farther); background: var(--farther-soft); padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; }
+.layout { display: grid; grid-template-columns: 380px 1fr; gap: 40px; margin-top: 28px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; gap: 28px; } }
+
+/* 手机 */
+.phone { background: var(--phone); border-radius: 40px; padding: 12px; max-width: 380px; width: 100%; margin: 0 auto; box-shadow: 0 20px 50px rgba(0,0,0,.18); }
+.screen { background: var(--surface); border-radius: 30px; min-height: 640px; padding: 22px 20px 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+.statusbar { display: flex; justify-content: space-between; font-family: var(--f-num); font-size: .78rem; color: var(--muted); }
+.screen h2 { font-size: .8rem; letter-spacing: .1em; color: var(--muted); margin: 0; font-weight: 500; }
+.big { font-family: var(--f-display); font-weight: 900; font-size: 2.6rem; line-height: 1.15; margin: 0; }
+.big small { font-size: 1rem; font-weight: 600; color: var(--muted); margin-left: 4px; }
+.range { color: var(--muted); font-size: .85rem; }
+.reveal { background: var(--accent-soft); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+.reveal .lead { font-size: .9rem; color: var(--muted); }
+.reveal .days { font-family: var(--f-display); font-weight: 900; font-size: 2.1rem; color: var(--closer); line-height: 1.2; }
+.rows { display: flex; flex-direction: column; gap: 10px; }
+.row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; padding-top: 0; }
+.row .k { font-weight: 700; }
+.row .detail { grid-column: 1 / -1; color: var(--muted); font-size: .85rem; }
+.row .v { font-family: var(--f-num); font-weight: 500; white-space: nowrap; }
+.closer { color: var(--closer); }
+.farther { color: var(--farther); }
+.sub { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 2px; font-size: .82rem; color: var(--muted); padding-left: 12px; border-left: 2px solid var(--line); margin-top: 4px; }
+.sub span { display: flex; justify-content: space-between; gap: 8px; }
+.group { margin: 4px 0 -6px; font-size: .78rem; letter-spacing: .1em; color: var(--muted); }
+.tip { display: flex; flex-direction: column; gap: 4px; background: var(--farther-soft); border-radius: 14px; padding: 12px 14px; font-size: .88rem; }
+.ai { display: flex; flex-direction: column; gap: 6px; background: var(--accent-soft); border: 1px dashed var(--accent); border-radius: 14px; padding: 12px 14px; font-size: .88rem; }
+.src { font-size: .75rem; color: var(--muted); }
+.quiet { opacity: .72; }
+.quiet u { color: var(--accent); text-decoration: none; }
+.progress { display: flex; flex-direction: column; gap: 6px; }
+.bar { height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 6px; transition: width 1.2s ease; }
+.pmeta { display: flex; justify-content: space-between; font-size: .85rem; color: var(--muted); }
+.pmeta b { color: var(--ink); font-family: var(--f-num); font-weight: 500; }
+.count { display: flex; align-items: baseline; gap: 8px; background: var(--bg); border-radius: 14px; padding: 12px 14px; }
+.count b { font-family: var(--f-display); font-size: 1.8rem; font-weight: 900; }
+.count span { color: var(--muted); font-size: .9rem; }
+.small { font-size: .8rem; color: var(--muted); }
+.note { font-size: .82rem; color: var(--muted); background: var(--bg); border-radius: 12px; padding: 10px 12px; }
+.fade { animation: fade .5s ease; }
+@keyframes fade { from { opacity: .2; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fade { animation: none; } .bar i { transition: none; } }
+
+/* 右侧控制区 */
+.panel { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.panel h3 { font-family: var(--f-display); font-size: 1.15rem; margin: 0 0 10px; }
+.steps { display: flex; flex-direction: column; gap: 8px; }
+.step { text-align: left; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+.step .n { font-family: var(--f-num); color: var(--muted); grid-row: span 2; align-self: center; }
+.step .t { font-weight: 700; }
+.step .d { color: var(--muted); font-size: .85rem; }
+.step[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.step:focus-visible, .opt:focus-visible, .play:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.play { font: inherit; font-weight: 700; background: var(--accent); color: var(--surface); border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; justify-self: start; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt { font: inherit; font-size: .9rem; background: var(--surface); color: inherit; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.opt[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.explain { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+.explain p { margin: 0 0 8px; max-width: 60ch; }
+.explain p:last-child { margin-bottom: 0; }
+.explain ul { margin: 0; padding-left: 1.2em; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="tag">示例数据 · 不是你的真实数字</span>
+    <h1>FIRE 月度揭晓预览</h1>
+    <p>模拟一位用户：9 月第一次导入账单，10 月中旬平时打开，11 月初导入 10 月账单。点右边的步骤，或点"自动播放"；第 ③ 步可以对比第 1 期和第 2 期。</p>
+  </header>
+
+  <div class="layout">
+    <div class="phone" aria-label="工具画面预览">
+      <div class="screen" id="screen"></div>
+    </div>
+
+    <div class="panel">
+      <section>
+        <h3>时间线</h3>
+        <div class="steps" id="steps"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="play" id="play" type="button">▶ 自动播放</button>
+        </div>
+      </section>
+
+      <section>
+        <h3>第 1 期和第 2 期对比</h3>
+        <div class="opts" id="opts"></div>
+        <p class="small" style="margin-top:8px">切换到第 ③ 步，看"下个月可以试试"下面多了什么。</p>
+      </section>
+
+      <section class="explain" id="explain"></section>
+    </div>
+  </div>
+</div>
+
+<script>
+const fmt = n => n.toLocaleString("zh-CN");
+const data = {
+  target: 2400000,
+  sept: { years: "11 年 5 个月", range: "顺利 9 年 1 个月 · 不顺 14 年 7 个月", assets: 612000 },
+  mid:  { assets: 626000, date: "10 月 15 日", daysLeft: 17 },
+  oct:  { years: "11 年 4 个月", range: "顺利 9 年 1 个月 · 不顺 14 年 6 个月", assets: 631500, total: 12 }
+};
+
+const costRows = `
+        <div class="row"><span class="k">🛒 开销</span><span class="v farther">远了 5 天</span>
+          <span class="detail">花了 ¥8,500（平时约 ¥8,000）</span>
+          <div class="sub"><span>外卖多 ¥620<b class="farther">远了 6 天</b></span><span>打车多 ¥180<b class="farther">远了 2 天</b></span><span>日用少 ¥300<b class="closer">近了 3 天</b></span></div></div>
+        <div class="row"><span class="k">💰 存款</span><span class="v closer">近了 7 天</span>
+          <span class="detail">存了 ¥9,000（平时约 ¥8,000）</span></div>`;
+const tipArith = `
+        <b>下个月可以试试</b>
+        <span>外卖回到平时水平 → 把这 6 天拿回来</span>
+        <span>以后每月少花 ¥200（约少点 4 次外卖）→ 整体提前约 <b class="closer">5 个月</b></span>`;
+const marketRow = `
+      <p class="group">你控制不了的</p>
+      <div class="rows quiet">
+        <div class="row"><span class="k">📈 市场</span><span class="v">近了 10 天</span>
+          <span class="detail">股票、基金、加密货币的涨跌。这部分不需要你做什么。<br><u>去持仓页看明细 ›</u></span></div>
+      </div>`;
+const layouts = {
+  p1: {
+    label: "第 1 期：算术",
+    html: () => `
+      <p class="group">你能决定的</p>
+      <div class="rows">${costRows}</div>
+      <div class="tip">${tipArith}
+        <span class="src">由引擎计算 · 不用 AI</span>
+      </div>
+      ${marketRow}`
+  },
+  p2: {
+    label: "第 2 期：算术 + AI 报告",
+    html: () => `
+      <p class="group">你能决定的</p>
+      <div class="rows">${costRows}</div>
+      <div class="tip">${tipArith}
+        <span class="src">由引擎计算 · 不用 AI</span>
+      </div>
+      <div class="ai">
+        <b>✨ AI 省钱报告</b>
+        <span>10 月你点了 7 次外卖，其中 5 次在晚上 9 点以后，基本都是加班的日子。</span>
+        <span>可以试试：加班那天中午多买一份简餐带回去。一个月大约省 ¥300，FIRE 能提前约 <b class="closer">7 个月</b>。</span>
+        <span>打车多出的 ¥180 集中在下雨的 3 天，属于偶然，不用特别在意。</span>
+        <span class="src">AI 只收到汇总（如"外卖 7 次、5 次在 21 点后"），不收到每笔明细</span>
+      </div>
+      ${marketRow}`
+  }
+};
+
+const steps = [
+  {
+    t: "9 月 1 日：第一次导入",
+    d: "导入 8 月账单和持仓，第一次算出日期",
+    render: () => `
+      <h2>第一次结算 · 9 月 1 日</h2>
+      <p class="big"><span data-count>${data.sept.years}</span></p>
+      <p class="range">大概率还要这么久 · ${data.sept.range}</p>
+      <div class="progress">
+        <div class="bar"><i style="width:0" data-w="${(data.sept.assets / data.target * 100).toFixed(1)}%"></i></div>
+        <div class="pmeta"><span>已走完 <b>${(data.sept.assets / data.target * 100).toFixed(1)}%</b></span><span>目标 ¥${fmt(data.target)}</span></div>
+      </div>
+      <div class="note">这是你的第一份结算。从下个月开始，每月这一天会告诉你"近了还是远了、为什么"。</div>
+      <p class="small">当前资产 ¥${fmt(data.sept.assets)}</p>`,
+    explain: `<p><b>第一次导入</b>：工具第一次拿到你的账单和持仓，算出"大概率还要多久"和一个范围（顺利 / 不顺）。</p>
+      <p>因为没有"上个月"可以比，所以这一次没有"近了几天"。</p>`
+  },
+  {
+    t: "10 月 15 日：平时打开",
+    d: "月中随手看一眼，日期不变",
+    render: () => `
+      <h2>上次结算 · 9 月 1 日</h2>
+      <p class="big">${data.sept.years}</p>
+      <p class="range">这个数字每月揭晓一次，平时不变</p>
+      <div class="progress">
+        <div class="bar"><i style="width:${(data.sept.assets / data.target * 100).toFixed(1)}%" data-w="${(data.mid.assets / data.target * 100).toFixed(1)}%"></i></div>
+        <div class="pmeta"><span>已走完 <b>${(data.mid.assets / data.target * 100).toFixed(1)}%</b></span><span>目标 ¥${fmt(data.target)}</span></div>
+      </div>
+      <div class="count"><b>17</b><span>天后揭晓 10 月的变化（11 月 1 日）</span></div>
+      <p class="small">当前资产 ¥${fmt(data.mid.assets)} · 按 ${data.mid.date} 收盘价</p>`,
+    explain: `<p><b>平时打开</b>：大数字还是 9 月 1 日那次的结果，<b>不会每天跳</b>。</p>
+      <ul>
+        <li>进度条会随股价慢慢动（25.5% → 26.1%），幅度很小，不吓人</li>
+        <li>倒计时告诉你下一次揭晓还有几天</li>
+        <li>资产总额只用小字，不标红绿，也没有"今日涨跌"</li>
+      </ul>`
+  },
+  {
+    t: "11 月 1 日：导入 10 月账单",
+    d: "揭晓时刻：近了几天、为什么",
+    render: (v) => `
+      <h2>10 月结算 · 11 月 1 日</h2>
+      <div class="reveal">
+        <span class="lead">这个月，你离自由</span>
+        <span class="days">近了 <span data-num="${data.oct.total}">0</span> 天</span>
+      </div>
+      ${layouts[v].html()}
+      <p class="big" style="font-size:1.7rem">${data.oct.years}</p>
+      <div class="progress">
+        <div class="bar"><i style="width:${(data.mid.assets / data.target * 100).toFixed(1)}%" data-w="${(data.oct.assets / data.target * 100).toFixed(1)}%"></i></div>
+        <div class="pmeta"><span>已走完 <b>${(data.oct.assets / data.target * 100).toFixed(1)}%</b></span><span>当前资产 ¥${fmt(data.oct.assets)}</span></div>
+      </div>`,
+    explain: `<p><b>揭晓时刻</b>：拿 10 月和 9 月比，三个原因各让日期变了多少天：</p>
+      <ul>
+        <li>市场 近了 10 天 + 存款 近了 7 天 − 开销 远了 5 天 = <b>近了 12 天</b></li>
+        <li>开销那一行再拆开，告诉你是外卖、打车还是别的</li>
+        <li>"远了"用琥珀色，不用股票软件那种红色</li>
+      </ul>
+      <p><b>第 1 期</b>：琥珀色卡片由引擎直接算出来，告诉你"哪一类多花了、少花能近几天"。</p>
+      <p><b>第 2 期</b>：在它下面多一份 AI 报告，读懂你的习惯，告诉你"具体怎么少花"。</p>`
+  }
+];
+
+let cur = 0, variant = "p1", timer = null;
+const screen = document.getElementById("screen");
+const stepsEl = document.getElementById("steps");
+const optsEl = document.getElementById("opts");
+const explainEl = document.getElementById("explain");
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+steps.forEach((s, i) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "step"; b.id = "step-" + i;
+  b.innerHTML = `<span class="n">${"①②③"[i]}</span><span class="t">${s.t}</span><span class="d">${s.d}</span>`;
+  b.addEventListener("click", () => { stop(); show(i); });
+  stepsEl.appendChild(b);
+});
+Object.entries(layouts).forEach(([k, m]) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "opt"; b.id = "opt-" + k; b.textContent = m.label;
+  b.addEventListener("click", () => { variant = k; syncOpts(); if (cur === 2) show(2, true); });
+  optsEl.appendChild(b);
+});
+function syncOpts() { optsEl.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", b.id === "opt-" + variant)); }
+
+function show(i, quiet) {
+  cur = i;
+  screen.innerHTML = `<div class="statusbar"><span>9:41</span><span>FIRE</span></div>` + steps[i].render(variant);
+  screen.querySelectorAll(":scope > *:not(.statusbar)").forEach(el => el.classList.add("fade"));
+  explainEl.innerHTML = steps[i].explain;
+  stepsEl.querySelectorAll(".step").forEach((b, j) => b.setAttribute("aria-pressed", j === i));
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    screen.querySelectorAll("[data-w]").forEach(el => el.style.width = el.dataset.w);
+  }));
+  const num = screen.querySelector("[data-num]");
+  if (num) {
+    const end = +num.dataset.num;
+    if (reduce || quiet) { num.textContent = end; return; }
+    let n = 0;
+    const tick = () => { n++; num.textContent = n; if (n < end) setTimeout(tick, 70); };
+    setTimeout(tick, 300);
+  }
+}
+function stop() { clearInterval(timer); timer = null; document.getElementById("play").textContent = "▶ 自动播放"; }
+document.getElementById("play").addEventListener("click", () => {
+  if (timer) return stop();
+  show(0);
+  document.getElementById("play").textContent = "■ 停止";
+  timer = setInterval(() => { if (cur >= 2) return stop(); show(cur + 1); }, 4000);
+});
+syncOpts();
+show(2, true);
+</script>
+
+</html>
